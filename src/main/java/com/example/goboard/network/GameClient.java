@@ -44,9 +44,7 @@ public class GameClient {
             System.out.println("Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
             
             // Send join game message
-            GameMessage joinMsg = new GameMessage(GameMessage.MessageType.JOIN_GAME);
-            joinMsg.setPlayerName(playerName);
-            joinMsg.setPlayerColor(playerColor);
+            GameMessage joinMsg = new GameMessage.JoinGameMessage(playerName, playerColor);
             sendMessage(joinMsg);
             
             // Start listening for server messages
@@ -81,64 +79,85 @@ public class GameClient {
     private void handleServerMessage(GameMessage message) {
         switch (message.getType()) {
             case WAITING:
-                System.out.println("\n" + message.getMessage());
+                if (message instanceof GameMessage.TextMessage) {
+                    System.out.println("\n" + ((GameMessage.TextMessage) message).getMessage());
+                }
                 break;
             case YOUR_TURN:
                 myTurn = true;
-                System.out.println("\n" + message.getMessage());
-                if (message.getBoardState() != null) {
-                    updateBoardState(message.getBoardState());
-                    displayBoard();
-                    handlePlayerMove();
+                if (message instanceof GameMessage.BoardStateMessage) {
+                    GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
+                    System.out.println("\n" + stateMsg.getMessage());
+                    if (stateMsg.getBoardState() != null) {
+                        updateBoardState(stateMsg.getBoardState());
+                        displayBoard();
+                        handlePlayerMove();
+                    }
                 }
                 break;
             case OPPONENT_TURN:
                 myTurn = false;
-                System.out.println("\n" + message.getMessage());
-                if (message.getBoardState() != null) {
-                    updateBoardState(message.getBoardState());
-                    displayBoard();
+                if (message instanceof GameMessage.BoardStateMessage) {
+                    GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
+                    System.out.println("\n" + stateMsg.getMessage());
+                    if (stateMsg.getBoardState() != null) {
+                        updateBoardState(stateMsg.getBoardState());
+                        displayBoard();
+                    }
                 }
                 break;
             case OPPONENT_MOVE:
-                System.out.println("\n" + message.getMessage());
-                if (message.getBoardState() != null) {
-                    updateBoardState(message.getBoardState());
-                    displayBoard();
-                    myTurn = true;
-                    handlePlayerMove();
-                }
-                break;
-            case OPPONENT_PASS:
-                System.out.println("\n" + message.getMessage());
-                if (message.getBoardState() != null) {
-                    updateBoardState(message.getBoardState());
-                    displayBoard();
-                    myTurn = true;
-                    handlePlayerMove();
-                }
-                break;
-            case MOVE_RESPONSE:
-                if (message.isSuccess()) {
-                    System.out.println("✓ " + message.getMessage());
-                } else {
-                    System.out.println("✗ " + message.getMessage());
-                    if (myTurn) {
+                if (message instanceof GameMessage.OpponentMoveMessage) {
+                    GameMessage.OpponentMoveMessage moveMsg = (GameMessage.OpponentMoveMessage) message;
+                    System.out.println("\n" + moveMsg.getMessage());
+                    if (moveMsg.getBoardState() != null) {
+                        updateBoardState(moveMsg.getBoardState());
+                        displayBoard();
+                        myTurn = true;
                         handlePlayerMove();
                     }
                 }
-                if (message.getBoardState() != null) {
-                    updateBoardState(message.getBoardState());
-                    displayBoard();
+                break;
+            case OPPONENT_PASS:
+                if (message instanceof GameMessage.BoardStateMessage) {
+                    GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
+                    System.out.println("\n" + stateMsg.getMessage());
+                    if (stateMsg.getBoardState() != null) {
+                        updateBoardState(stateMsg.getBoardState());
+                        displayBoard();
+                        myTurn = true;
+                        handlePlayerMove();
+                    }
+                }
+                break;
+            case MOVE_RESPONSE:
+                if (message instanceof GameMessage.MoveResponseMessage) {
+                    GameMessage.MoveResponseMessage respMsg = (GameMessage.MoveResponseMessage) message;
+                    if (respMsg.isSuccess()) {
+                        System.out.println("✓ " + respMsg.getMessage());
+                    } else {
+                        System.out.println("✗ " + respMsg.getMessage());
+                        if (myTurn) {
+                            handlePlayerMove();
+                        }
+                    }
+                    if (respMsg.getBoardState() != null) {
+                        updateBoardState(respMsg.getBoardState());
+                        displayBoard();
+                    }
                 }
                 break;
             case GAME_OVER:
                 gameActive = false;
                 System.out.println("\n========== GAME OVER ==========");
-                System.out.println(message.getMessage());
+                if (message instanceof GameMessage.TextMessage) {
+                    System.out.println(((GameMessage.TextMessage) message).getMessage());
+                }
                 break;
             case ERROR:
-                System.out.println("ERROR: " + message.getMessage());
+                if (message instanceof GameMessage.TextMessage) {
+                    System.out.println("ERROR: " + ((GameMessage.TextMessage) message).getMessage());
+                }
                 break;
             default:
                 System.out.println("Unknown message type: " + message.getType());
@@ -172,12 +191,12 @@ public class GameClient {
             String input = scanner.nextLine().trim().toLowerCase();
             
             if (input.equals("pass")) {
-                GameMessage msg = new GameMessage(GameMessage.MessageType.PASS);
+                GameMessage msg = new GameMessage.SimpleMessage(GameMessage.MessageType.PASS);
                 sendMessage(msg);
                 myTurn = false;
                 break;
             } else if (input.equals("resign")) {
-                GameMessage msg = new GameMessage(GameMessage.MessageType.RESIGN);
+                GameMessage msg = new GameMessage.SimpleMessage(GameMessage.MessageType.RESIGN);
                 sendMessage(msg);
                 myTurn = false;
                 gameActive = false;
@@ -185,7 +204,8 @@ public class GameClient {
             } else {
                 int[] pos = parseMove(input);
                 if (pos != null) {
-                    GameMessage msg = new GameMessage(GameMessage.MessageType.MOVE, pos[0], pos[1]);
+                    GameMessage msg = new GameMessage.MoveMessage(
+                        GameMessage.MessageType.MOVE, pos[0], pos[1]);
                     sendMessage(msg);
                     myTurn = false;
                     break;
@@ -219,8 +239,8 @@ public class GameClient {
     }
 
     public void startGame(String opponentName) {
-        GameMessage msg = new GameMessage(GameMessage.MessageType.START_GAME);
-        msg.setMessage(opponentName);
+        GameMessage msg = new GameMessage.TextMessage(
+            GameMessage.MessageType.START_GAME, opponentName);
         sendMessage(msg);
         gameActive = true;
     }

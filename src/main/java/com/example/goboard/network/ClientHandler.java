@@ -75,8 +75,9 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleJoinGame(GameMessage message) {
-        this.playerName = message.getPlayerName();
-        String color = message.getPlayerColor();
+        GameMessage.JoinGameMessage joinMsg = (GameMessage.JoinGameMessage) message;
+        this.playerName = joinMsg.getPlayerName();
+        String color = joinMsg.getPlayerColor();
         
         server.registerClient(playerName, this);
         
@@ -85,8 +86,9 @@ public class ClientHandler implements Runnable {
             Stone.Color.WHITE : Stone.Color.BLACK;
         this.player = new Player(playerName, stoneColor);
         
-        GameMessage response = new GameMessage(GameMessage.MessageType.WAITING);
-        response.setMessage("Waiting for opponent...");
+        GameMessage response = new GameMessage.TextMessage(
+            GameMessage.MessageType.WAITING, 
+            "Waiting for opponent...");
         sendMessage(response);
         
         System.out.println("Player " + playerName + " (" + stoneColor + ") joined the game");
@@ -96,19 +98,22 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleStartGame(GameMessage message) {
-        String opponentName = message.getMessage();
+        GameMessage.TextMessage textMsg = (GameMessage.TextMessage) message;
+        String opponentName = textMsg.getMessage();
         opponent = server.findClient(opponentName);
         
         if (opponent == null) {
-            GameMessage response = new GameMessage(GameMessage.MessageType.ERROR);
-            response.setMessage("Opponent not found: " + opponentName);
+            GameMessage response = new GameMessage.TextMessage(
+                GameMessage.MessageType.ERROR,
+                "Opponent not found: " + opponentName);
             sendMessage(response);
             return;
         }
         
         if (opponent.isGameActive()) {
-            GameMessage response = new GameMessage(GameMessage.MessageType.ERROR);
-            response.setMessage("Opponent is already in a game");
+            GameMessage response = new GameMessage.TextMessage(
+                GameMessage.MessageType.ERROR,
+                "Opponent is already in a game");
             sendMessage(response);
             return;
         }
@@ -135,19 +140,24 @@ public class ClientHandler implements Runnable {
         opponent.setAvailable(false);
         
         // Notify both players
-        GameMessage startMsg = new GameMessage(GameMessage.MessageType.YOUR_TURN);
-        startMsg.setMessage("Game started! Black plays first");
-        startMsg.setBoardState(serializeBoard(board));
+        GameMessage startMsg = new GameMessage.BoardStateMessage(
+            GameMessage.MessageType.YOUR_TURN,
+            serializeBoard(board),
+            "Game started! Black plays first");
         
         if (this.player.getColor() == Stone.Color.BLACK) {
             sendMessage(startMsg);
             
-            GameMessage opponentMsg = new GameMessage(GameMessage.MessageType.OPPONENT_TURN);
-            opponentMsg.setMessage("Game started! Opponent (Black) plays first");
-            opponentMsg.setBoardState(serializeBoard(board));
+            GameMessage opponentMsg = new GameMessage.BoardStateMessage(
+                GameMessage.MessageType.OPPONENT_TURN,
+                serializeBoard(board),
+                "Game started! Opponent (Black) plays first");
             opponent.sendMessage(opponentMsg);
         } else {
-            sendMessage(new GameMessage(GameMessage.MessageType.OPPONENT_TURN, "Game started! Opponent (Black) plays first"));
+            sendMessage(new GameMessage.BoardStateMessage(
+                GameMessage.MessageType.OPPONENT_TURN,
+                serializeBoard(board),
+                "Game started! Opponent (Black) plays first"));
             opponent.sendMessage(startMsg);
         }
         
@@ -156,69 +166,78 @@ public class ClientHandler implements Runnable {
 
     private void handleMove(GameMessage message) {
         if (!gameActive || opponent == null) {
-            GameMessage response = new GameMessage(GameMessage.MessageType.ERROR);
-            response.setMessage("Game not active");
+            GameMessage response = new GameMessage.TextMessage(
+                GameMessage.MessageType.ERROR,
+                "Game not active");
             sendMessage(response);
             return;
         }
         
-        int row = message.getRow();
-        int col = message.getCol();
+        GameMessage.MoveMessage moveMsg = (GameMessage.MoveMessage) message;
+        int row = moveMsg.getRow();
+        int col = moveMsg.getCol();
         
         boolean success = gameController.play(row, col);
-        
-        GameMessage response = new GameMessage(GameMessage.MessageType.MOVE_RESPONSE);
-        response.setSuccess(success);
-        response.setBoardState(serializeBoard(board));
+        int[][] boardState = serializeBoard(board);
         
         if (success) {
-            response.setMessage("Move accepted at (" + row + ", " + col + ")");
+            GameMessage response = new GameMessage.MoveResponseMessage(
+                true,
+                "Move accepted at (" + row + ", " + col + ")",
+                boardState);
             sendMessage(response);
             
             // Notify opponent
-            GameMessage opponentMsg = new GameMessage(GameMessage.MessageType.OPPONENT_MOVE);
-            opponentMsg.setRow(row);
-            opponentMsg.setCol(col);
-            opponentMsg.setBoardState(serializeBoard(board));
-            opponentMsg.setMessage("Opponent played at (" + row + ", " + col + ")");
+            GameMessage opponentMsg = new GameMessage.OpponentMoveMessage(
+                row, col,
+                "Opponent played at (" + row + ", " + col + ")",
+                boardState);
             opponent.sendMessage(opponentMsg);
         } else {
-            response.setMessage("Invalid move at (" + row + ", " + col + ")");
+            GameMessage response = new GameMessage.MoveResponseMessage(
+                false,
+                "Invalid move at (" + row + ", " + col + ")",
+                boardState);
             sendMessage(response);
         }
     }
 
     private void handlePass(GameMessage message) {
         if (!gameActive || opponent == null) {
-            GameMessage response = new GameMessage(GameMessage.MessageType.ERROR);
-            response.setMessage("Game not active");
+            GameMessage response = new GameMessage.TextMessage(
+                GameMessage.MessageType.ERROR,
+                "Game not active");
             sendMessage(response);
             return;
         }
         
         gameController.pass();
         
-        GameMessage response = new GameMessage(GameMessage.MessageType.MOVE_RESPONSE);
-        response.setSuccess(true);
-        response.setMessage("You passed");
-        response.setBoardState(serializeBoard(board));
+        int[][] boardState = serializeBoard(board);
+        GameMessage response = new GameMessage.MoveResponseMessage(
+            true,
+            "You passed",
+            boardState);
         sendMessage(response);
         
         // Notify opponent
-        GameMessage opponentMsg = new GameMessage(GameMessage.MessageType.OPPONENT_PASS);
-        opponentMsg.setMessage("Opponent passed");
-        opponentMsg.setBoardState(serializeBoard(board));
+        GameMessage opponentMsg = new GameMessage.BoardStateMessage(
+            GameMessage.MessageType.OPPONENT_PASS,
+            boardState,
+            "Opponent passed");
         opponent.sendMessage(opponentMsg);
     }
 
     private void handleResign(GameMessage message) {
         if (gameActive && opponent != null) {
-            GameMessage gameOverMsg = new GameMessage(GameMessage.MessageType.GAME_OVER);
-            gameOverMsg.setMessage("Opponent resigned. You win!");
+            GameMessage gameOverMsg = new GameMessage.TextMessage(
+                GameMessage.MessageType.GAME_OVER,
+                "Opponent resigned. You win!");
             opponent.sendMessage(gameOverMsg);
             
-            GameMessage selfMsg = new GameMessage(GameMessage.MessageType.GAME_OVER);
-            selfMsg.setMessage("You resigned. You lost.");
+            GameMessage selfMsg = new GameMessage.TextMessage(
+                GameMessage.MessageType.GAME_OVER,
+                "You resigned. You lost.");
             sendMessage(selfMsg);
             
             endGame();
@@ -280,8 +299,9 @@ public class ClientHandler implements Runnable {
         }
         
         if (opponent != null && gameActive) {
-            GameMessage gameOverMsg = new GameMessage(GameMessage.MessageType.GAME_OVER);
-            gameOverMsg.setMessage("Opponent disconnected");
+            GameMessage gameOverMsg = new GameMessage.TextMessage(
+                GameMessage.MessageType.GAME_OVER,
+                "Opponent disconnected");
             opponent.sendMessage(gameOverMsg);
         }
     }
@@ -323,7 +343,9 @@ public class ClientHandler implements Runnable {
         return player;
     }
 
-    public void initiateGameStart(GameMessage message) {
+    public void initiateGameStart(String opponentName) {
+        GameMessage message = new GameMessage.TextMessage(
+            GameMessage.MessageType.START_GAME, opponentName);
         handleStartGame(message);
     }
 }

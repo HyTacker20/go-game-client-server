@@ -106,9 +106,7 @@ public class GameServer {
         player2.setAvailable(false);
         
         // Initialize game through player1
-        GameMessage startMsg = new GameMessage(GameMessage.MessageType.START_GAME);
-        startMsg.setMessage(player2.getPlayerName());
-        player1.initiateGameStart(startMsg);
+        player1.initiateGameStart(player2.getPlayerName());
     }
 
     public void stop() {
