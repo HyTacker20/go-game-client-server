@@ -1,20 +1,25 @@
 package com.example.goboard.console;
 
-import java.util.Scanner;
-import com.example.goboard.model.*;
-import com.example.goboard.factory.BoardFactory;
-import com.example.goboard.view.AsciiBoardRenderer;
-import com.example.goboard.strategy.SimpleMoveValidator;
 import com.example.goboard.controller.GameController;
+import com.example.goboard.factory.BoardFactory;
+import com.example.goboard.model.Board;
+import com.example.goboard.model.Player;
+import com.example.goboard.model.Stone;
+import com.example.goboard.strategy.SimpleMoveValidator;
+import com.example.goboard.view.GameUI;
 
+/**
+ * Local game controller that uses a GameUI abstraction.
+ * This allows the game to work with any UI implementation (Console, GUI, etc.)
+ */
 public class ConsoleGame {
 
     private final Board board;
     private final GameController controller;
-    private final AsciiBoardRenderer renderer = new AsciiBoardRenderer();
-    private final Scanner scanner = new Scanner(System.in);
+    private final GameUI ui;
 
-    public ConsoleGame() {
+    public ConsoleGame(GameUI ui) {
+        this.ui = ui;
         board = BoardFactory.standard19();
         controller = new GameController(
                 board,
@@ -24,36 +29,37 @@ public class ConsoleGame {
     }
 
     public void start() {
-        System.out.println("=== Gra GO — wersja konsolowa ===");
-        System.out.println(renderer.render(board));
+        ui.displayMessage("=== GO Game ===");
+        ui.displayBoard(board);
 
         while (true) {
-            System.out.print("Ruch (np. D4), 'pass', 'quit': ");
-            String input = scanner.nextLine().trim().toLowerCase();
+            String input = ui.getMoveInput("Move (e.g., D4), 'pass', 'quit': ");
 
             if (input.equals("quit")) {
-                System.out.println("Koniec gry.");
+                ui.displayMessage("Game ended.");
                 break;
             }
 
             if (input.equals("pass")) {
-                System.out.println("Gracz pasuje.");
+                ui.displayMessage("Player passes.");
                 controller.pass();
                 continue;
             }
 
             int[] pos = parseMove(input);
             if (pos == null) {
-                System.out.println("Niepoprawny format ruchu.");
+                ui.displayMessage("Invalid move format.");
                 continue;
             }
 
             if (!controller.play(pos[0], pos[1])) {
-                System.out.println("Nieprawidłowy ruch.");
+                ui.displayMessage("Invalid move.");
             }
 
-            System.out.println(renderer.render(board));
+            ui.displayBoard(board);
         }
+        
+        ui.close();
     }
 
     /**

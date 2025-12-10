@@ -5,6 +5,8 @@ import java.util.Scanner;
 import com.example.goboard.console.ConsoleGame;
 import com.example.goboard.network.GameClient;
 import com.example.goboard.network.GameServer;
+import com.example.goboard.view.UIFactory;
+import com.example.goboard.view.GameUI;
 
 public class App {
     public static void main(String[] args) {
@@ -20,7 +22,7 @@ public class App {
         
         switch (choice) {
             case "1":
-                playLocalGame();
+                playLocalGame(scanner);
                 break;
             case "2":
                 startServer();
@@ -34,10 +36,14 @@ public class App {
         }
     }
     
-    private static void playLocalGame() {
+    private static void playLocalGame(Scanner scanner) {
         System.out.println("\nStarting local console game...\n");
-        ConsoleGame game = new ConsoleGame();
+        
+        GameUI ui = UIFactory.createUI(UIFactory.UIType.CONSOLE);
+        ConsoleGame game = new ConsoleGame(ui);
         game.start();
+        
+        scanner.close();
     }
     
     private static void startServer() {
