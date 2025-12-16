@@ -33,6 +33,12 @@ public class GameClient {
         this.board = new Board(19);
     }
 
+    public GameClient(String name) {
+        this.playerName = name;
+        this.playerColor = "RANDOM";
+        this.board = new Board(19);
+    }
+
     public boolean connect() {
         try {
             socket = new Socket(SERVER_HOST, SERVER_PORT);
@@ -43,8 +49,7 @@ public class GameClient {
             
             System.out.println("Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
             
-            // Send join game message
-            GameMessage joinMsg = new GameMessage.JoinGameMessage(playerName, playerColor);
+            GameMessage joinMsg = new GameMessage.JoinGameMessage(playerName);
             sendMessage(joinMsg);
             
             // Start listening for server messages
@@ -218,23 +223,33 @@ public class GameClient {
 
     private int[] parseMove(String input) {
         if (input.length() < 2) return null;
-        
-        char colChar = input.charAt(0);
-        String rowStr = input.substring(1);
-        
-        int col = colChar - 'a';
+
+        char colChar = Character.toUpperCase(input.charAt(0));
+        String rowStr = input.substring(1).trim();
+
+        // Valid letters A-H, J-T (skip I)
+        if (colChar < 'A' || colChar > 'T' || colChar == 'I') {
+            return null;
+        }
+
+        int col = colChar - 'A';
+        if (colChar > 'I') {
+            // Skip the 'I' column
+            col -= 1;
+        }
+
         int row;
-        
         try {
-            row = Integer.parseInt(rowStr) - 1;
+            row = Integer.parseInt(rowStr) - 1; // convert to 0-based
         } catch (NumberFormatException e) {
             return null;
         }
-        
+
+        // Bounds check for 19x19
         if (row < 0 || row >= 19 || col < 0 || col >= 19) {
             return null;
         }
-        
+
         return new int[]{row, col};
     }
 
@@ -285,13 +300,7 @@ public class GameClient {
         Scanner scanner = new Scanner(System.in);
         String name = scanner.nextLine().trim();
         
-        System.out.print("Enter your color (BLACK/WHITE): ");
-        String color = scanner.nextLine().trim().toUpperCase();
-        if (!color.equals("BLACK") && !color.equals("WHITE")) {
-            color = "BLACK";
-        }
-        
-        GameClient client = new GameClient(name, color);
+        GameClient client = new GameClient(name);
         
         if (!client.connect()) {
             System.out.println("Failed to connect to server");
@@ -300,7 +309,7 @@ public class GameClient {
         
         System.out.println("\nWaiting for game to start...");
         System.out.println("Your player name: " + name);
-        System.out.println("Your color: " + color);
+        System.out.println("Color will be assigned randomly.");
         
         // Keep the client running
         try {

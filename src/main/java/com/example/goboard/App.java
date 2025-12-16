@@ -56,13 +56,7 @@ public class App {
         System.out.print("Enter your name: ");
         String name = scanner.nextLine().trim();
         
-        System.out.print("Enter your color (BLACK/WHITE) [default: BLACK]: ");
-        String color = scanner.nextLine().trim().toUpperCase();
-        if (!color.equals("BLACK") && !color.equals("WHITE")) {
-            color = "BLACK";
-        }
-        
-        GameClient client = new GameClient(name, color);
+        GameClient client = new GameClient(name);
         
         if (!client.connect()) {
             System.out.println("Failed to connect to server");
@@ -72,7 +66,7 @@ public class App {
         
         System.out.println("\nConnected to server!");
         System.out.println("Your name: " + name);
-        System.out.println("Your color: " + color);
+        System.out.println("Color will be assigned randomly.");
         System.out.println("\nWaiting for opponent and game start...");
         
         // Keep running until disconnected

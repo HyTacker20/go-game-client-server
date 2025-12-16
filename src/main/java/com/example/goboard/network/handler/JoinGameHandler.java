@@ -13,21 +13,17 @@ public class JoinGameHandler implements MessageHandler {
     public void handle(MessageHandlerContext context, GameMessage message) {
         GameMessage.JoinGameMessage joinMsg = (GameMessage.JoinGameMessage) message;
         String playerName = joinMsg.getPlayerName();
-        String color = joinMsg.getPlayerColor();
         
         context.registerClient(playerName, context.getClientHandler());
         
-        // Create player with specified color
-        Stone.Color stoneColor = "WHITE".equalsIgnoreCase(color) ? 
-            Stone.Color.WHITE : Stone.Color.BLACK;
-        context.setPlayer(new Player(playerName, stoneColor));
+        context.setPlayer(new Player(playerName, Stone.Color.UNASSIGNED));
         
         GameMessage response = new GameMessage.TextMessage(
             GameMessage.MessageType.WAITING, 
             "Waiting for opponent...");
         context.sendMessage(response);
         
-        System.out.println("Player " + playerName + " (" + stoneColor + ") joined the game");
+        System.out.println("Player " + playerName + " joined the lobby");
         
         // Mark as available for matching
         context.setAvailable(true);
