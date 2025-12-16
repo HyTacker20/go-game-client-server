@@ -37,14 +37,20 @@ public class StartGameHandler implements MessageHandler {
         }
         
         // Initialize game
-        Board board = BoardFactory.standard19();
+        Board board = BoardFactory.small9();
         context.setBoard(board);
         
-        // Determine colors based on player setup
-        Player blackPlayer = context.getPlayer().getColor() == Stone.Color.BLACK ? 
-            context.getPlayer() : opponent.getPlayer();
-        Player whitePlayer = context.getPlayer().getColor() == Stone.Color.WHITE ? 
-            context.getPlayer() : opponent.getPlayer();
+        // Randomly assign colors to players, regardless of prior preference
+        boolean contextIsBlack = Math.random() < 0.5;
+        Player contextAssigned = new Player(context.getPlayer().getName(), contextIsBlack ? Stone.Color.BLACK : Stone.Color.WHITE);
+        Player opponentAssigned = new Player(opponent.getPlayer().getName(), contextIsBlack ? Stone.Color.WHITE : Stone.Color.BLACK);
+
+        // Update players on handlers with assigned colors
+        context.setPlayer(contextAssigned);
+        opponent.setPlayer(opponentAssigned);
+
+        Player blackPlayer = contextIsBlack ? contextAssigned : opponentAssigned;
+        Player whitePlayer = contextIsBlack ? opponentAssigned : contextAssigned;
         
         GameController gameController = new GameController(
             board, new SimpleMoveValidator(), 
@@ -68,7 +74,7 @@ public class StartGameHandler implements MessageHandler {
             boardState,
             "Game started! Black plays first");
         
-        if (context.getPlayer().getColor() == Stone.Color.BLACK) {
+        if (contextAssigned.getColor() == Stone.Color.BLACK) {
             context.sendMessage(startMsg);
             
             GameMessage opponentMsg = new GameMessage.BoardStateMessage(
@@ -84,6 +90,6 @@ public class StartGameHandler implements MessageHandler {
             opponent.sendMessage(startMsg);
         }
         
-        System.out.println("Game started: " + context.getPlayerName() + " vs " + opponent.getPlayerName());
+        System.out.println("[GAME] ✦ " + blackPlayer.getName() + " (BLACK) vs " + whitePlayer.getName() + " (WHITE)");
     }
 }

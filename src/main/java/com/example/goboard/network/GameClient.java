@@ -7,6 +7,7 @@ import com.example.goboard.model.Board;
 import com.example.goboard.model.Intersection;
 import com.example.goboard.model.Stone;
 import com.example.goboard.view.AsciiBoardRenderer;
+import com.example.goboard.view.ConsoleUIFormatter;
 
 /**
  * Game client that connects to the server and handles local player input.
@@ -21,30 +22,38 @@ public class GameClient {
     private String playerName;
     private String playerColor;
     private Board board;
-    private boolean connected = false;
-    private boolean gameActive = false;
-    private boolean myTurn = false;
+    private volatile boolean connected = false;
+    private volatile boolean gameActive = false;
+    private volatile boolean myTurn = false;
+    private volatile boolean waitingForInput = false;
+    private Thread inputThread;
     private final AsciiBoardRenderer renderer = new AsciiBoardRenderer();
     private final Scanner scanner = new Scanner(System.in);
 
     public GameClient(String name, String color) {
         this.playerName = name;
         this.playerColor = color;
-        this.board = new Board(19);
+        this.board = new Board(9);
+    }
+
+    public GameClient(String name) {
+        this.playerName = name;
+        this.playerColor = "RANDOM";
+        this.board = new Board(9);
     }
 
     public boolean connect() {
         try {
+            ConsoleUIFormatter.printConnecting(SERVER_HOST, SERVER_PORT);
             socket = new Socket(SERVER_HOST, SERVER_PORT);
             out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
             in = new ObjectInputStream(socket.getInputStream());
             connected = true;
             
-            System.out.println("Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
+            ConsoleUIFormatter.printConnected(SERVER_HOST, SERVER_PORT, playerName);
             
-            // Send join game message
-            GameMessage joinMsg = new GameMessage.JoinGameMessage(playerName, playerColor);
+            GameMessage joinMsg = new GameMessage.JoinGameMessage(playerName);
             sendMessage(joinMsg);
             
             // Start listening for server messages
@@ -54,7 +63,7 @@ public class GameClient {
             
             return true;
         } catch (IOException e) {
-            System.err.println("Failed to connect to server: " + e.getMessage());
+            ConsoleUIFormatter.printError("Failed to connect to server: " + e.getMessage());
             connected = false;
             return false;
         }
@@ -67,11 +76,11 @@ public class GameClient {
                 handleServerMessage(message);
             }
         } catch (EOFException e) {
-            System.out.println("Server disconnected");
+            ConsoleUIFormatter.printDisconnected("Server closed connection");
             connected = false;
         } catch (ClassNotFoundException | IOException e) {
             if (connected) {
-                System.err.println("Error receiving message: " + e.getMessage());
+                ConsoleUIFormatter.printError("Error receiving message: " + e.getMessage());
             }
         }
     }
@@ -80,18 +89,18 @@ public class GameClient {
         switch (message.getType()) {
             case WAITING:
                 if (message instanceof GameMessage.TextMessage) {
-                    System.out.println("\n" + ((GameMessage.TextMessage) message).getMessage());
+                    ConsoleUIFormatter.printWaiting(((GameMessage.TextMessage) message).getMessage());
                 }
                 break;
             case YOUR_TURN:
                 myTurn = true;
+                ConsoleUIFormatter.printTurnInfo(playerName, playerColor, true);
                 if (message instanceof GameMessage.BoardStateMessage) {
                     GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
-                    System.out.println("\n" + stateMsg.getMessage());
                     if (stateMsg.getBoardState() != null) {
                         updateBoardState(stateMsg.getBoardState());
                         displayBoard();
-                        handlePlayerMove();
+                        startInputThread();
                     }
                 }
                 break;
@@ -99,68 +108,70 @@ public class GameClient {
                 myTurn = false;
                 if (message instanceof GameMessage.BoardStateMessage) {
                     GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
-                    System.out.println("\n" + stateMsg.getMessage());
                     if (stateMsg.getBoardState() != null) {
                         updateBoardState(stateMsg.getBoardState());
                         displayBoard();
+                        ConsoleUIFormatter.printTurnInfo(playerName, playerColor, false);
+                        ConsoleUIFormatter.printWaiting("Waiting for opponent's move...");
                     }
                 }
                 break;
             case OPPONENT_MOVE:
                 if (message instanceof GameMessage.OpponentMoveMessage) {
                     GameMessage.OpponentMoveMessage moveMsg = (GameMessage.OpponentMoveMessage) message;
-                    System.out.println("\n" + moveMsg.getMessage());
+                    String position = formatPosition(moveMsg.getRow(), moveMsg.getCol());
+                    ConsoleUIFormatter.printOpponentMove("Opponent", position);
                     if (moveMsg.getBoardState() != null) {
                         updateBoardState(moveMsg.getBoardState());
                         displayBoard();
                         myTurn = true;
-                        handlePlayerMove();
+                        ConsoleUIFormatter.printTurnInfo(playerName, playerColor, true);
+                        startInputThread();
                     }
                 }
                 break;
             case OPPONENT_PASS:
                 if (message instanceof GameMessage.BoardStateMessage) {
                     GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
-                    System.out.println("\n" + stateMsg.getMessage());
+                    ConsoleUIFormatter.printOpponentPassed("Opponent");
                     if (stateMsg.getBoardState() != null) {
                         updateBoardState(stateMsg.getBoardState());
                         displayBoard();
                         myTurn = true;
-                        handlePlayerMove();
+                        ConsoleUIFormatter.printTurnInfo(playerName, playerColor, true);
+                        startInputThread();
                     }
                 }
                 break;
             case MOVE_RESPONSE:
                 if (message instanceof GameMessage.MoveResponseMessage) {
                     GameMessage.MoveResponseMessage respMsg = (GameMessage.MoveResponseMessage) message;
+                    ConsoleUIFormatter.printMoveResponse(respMsg.isSuccess(), respMsg.getMessage());
                     if (respMsg.isSuccess()) {
-                        System.out.println("✓ " + respMsg.getMessage());
-                    } else {
-                        System.out.println("✗ " + respMsg.getMessage());
-                        if (myTurn) {
-                            handlePlayerMove();
+                        if (respMsg.getBoardState() != null) {
+                            updateBoardState(respMsg.getBoardState());
+                            displayBoard();
                         }
-                    }
-                    if (respMsg.getBoardState() != null) {
-                        updateBoardState(respMsg.getBoardState());
-                        displayBoard();
+                    } else {
+                        myTurn = true;  // Re-enable turn to allow player to try again
+                        startInputThread();
                     }
                 }
                 break;
             case GAME_OVER:
                 gameActive = false;
-                System.out.println("\n========== GAME OVER ==========");
                 if (message instanceof GameMessage.TextMessage) {
-                    System.out.println(((GameMessage.TextMessage) message).getMessage());
+                    String result = ((GameMessage.TextMessage) message).getMessage();
+                    ConsoleUIFormatter.printGameOver("Game Over", result);
                 }
                 break;
             case ERROR:
                 if (message instanceof GameMessage.TextMessage) {
-                    System.out.println("ERROR: " + ((GameMessage.TextMessage) message).getMessage());
+                    ConsoleUIFormatter.printError(((GameMessage.TextMessage) message).getMessage());
                 }
                 break;
             default:
-                System.out.println("Unknown message type: " + message.getType());
+                // Silently ignore unknown message types
         }
     }
 
@@ -169,7 +180,8 @@ public class GameClient {
             for (int c = 0; c < boardState[r].length; c++) {
                 Intersection inter = board.getIntersection(r, c);
                 if (boardState[r][c] == 0) {
-                    // Empty, do nothing
+                    // Empty - handles captured stones
+                    inter.setStone(null);
                 } else if (boardState[r][c] == 1) {
                     // Black stone
                     inter.setStone(new Stone(Stone.Color.BLACK));
@@ -182,12 +194,29 @@ public class GameClient {
     }
 
     private void displayBoard() {
-        System.out.println(renderer.render(board));
+        ConsoleUIFormatter.clearScreen();
+        String boardString = renderer.render(board);
+        ConsoleUIFormatter.printBoardWithFrame(boardString);
+    }
+
+    private void startInputThread() {
+        if (waitingForInput) {
+            return; // Already waiting for input
+        }
+        
+        waitingForInput = true;
+        inputThread = new Thread(() -> {
+            handlePlayerMove();
+            waitingForInput = false;
+        });
+        inputThread.setName("InputThread-" + playerName);
+        inputThread.setDaemon(false);
+        inputThread.start();
     }
 
     private void handlePlayerMove() {
         while (myTurn) {
-            System.out.print("Your move (e.g., D4), 'pass', or 'resign': ");
+            ConsoleUIFormatter.printMovePrompt();
             String input = scanner.nextLine().trim().toLowerCase();
             
             if (input.equals("pass")) {
@@ -210,7 +239,7 @@ public class GameClient {
                     myTurn = false;
                     break;
                 } else {
-                    System.out.println("Invalid format. Use coordinates like D4, A1, etc.");
+                    ConsoleUIFormatter.printInvalidInput("Use coordinates like D4, A1, etc.");
                 }
             }
         }
@@ -218,24 +247,50 @@ public class GameClient {
 
     private int[] parseMove(String input) {
         if (input.length() < 2) return null;
-        
-        char colChar = input.charAt(0);
-        String rowStr = input.substring(1);
-        
-        int col = colChar - 'a';
+
+        char colChar = Character.toUpperCase(input.charAt(0));
+        String rowStr = input.substring(1).trim();
+
+        // Valid letters A-H, J-T (skip I)
+        if (colChar < 'A' || colChar > 'T' || colChar == 'I') {
+            return null;
+        }
+
+        int col = colChar - 'A';
+        if (colChar > 'I') {
+            // Skip the 'I' column
+            col -= 1;
+        }
+
         int row;
-        
         try {
-            row = Integer.parseInt(rowStr) - 1;
+            row = Integer.parseInt(rowStr) - 1; // convert to 0-based
         } catch (NumberFormatException e) {
             return null;
         }
-        
+
+        // Bounds check for 19x19
         if (row < 0 || row >= 19 || col < 0 || col >= 19) {
             return null;
         }
-        
+
         return new int[]{row, col};
+    }
+
+    private String formatPosition(int row, int col) {
+        // Convert column number to letter (0->A, 1->B, etc., skipping I)
+        char colChar;
+        if (col < 8) {
+            colChar = (char) ('A' + col);
+        } else {
+            // Skip 'I' - add 1 to the column
+            colChar = (char) ('A' + col + 1);
+        }
+        
+        // Convert row to 1-based number
+        int rowNum = row + 1;
+        
+        return String.valueOf(colChar) + rowNum;
     }
 
     public void startGame(String opponentName) {
@@ -252,12 +307,20 @@ public class GameClient {
                 out.flush();
             }
         } catch (IOException e) {
-            System.err.println("Error sending message: " + e.getMessage());
+            ConsoleUIFormatter.printError("Failed to send message: " + e.getMessage());
         }
     }
 
     public void disconnect() {
         connected = false;
+        gameActive = false;
+        myTurn = false;
+        
+        // Interrupt input thread if waiting
+        if (inputThread != null && inputThread.isAlive()) {
+            inputThread.interrupt();
+        }
+        
         try {
             if (socket != null && !socket.isClosed()) {
                 socket.close();
@@ -280,33 +343,44 @@ public class GameClient {
     }
 
     public static void main(String[] args) {
-        System.out.println("=== GO Game Client ===");
+        ConsoleUIFormatter.printHeader("GO Game - Client");
         System.out.print("Enter your name: ");
         Scanner scanner = new Scanner(System.in);
         String name = scanner.nextLine().trim();
         
-        System.out.print("Enter your color (BLACK/WHITE): ");
-        String color = scanner.nextLine().trim().toUpperCase();
-        if (!color.equals("BLACK") && !color.equals("WHITE")) {
-            color = "BLACK";
-        }
-        
-        GameClient client = new GameClient(name, color);
-        
-        if (!client.connect()) {
-            System.out.println("Failed to connect to server");
+        if (name.isEmpty()) {
+            ConsoleUIFormatter.printError("Name cannot be empty");
             return;
         }
         
-        System.out.println("\nWaiting for game to start...");
-        System.out.println("Your player name: " + name);
-        System.out.println("Your color: " + color);
+        // Enable ANSI support and enter alternative screen buffer
+        ConsoleUIFormatter.enableWindowsAnsiSupport();
+        ConsoleUIFormatter.enterAlternativeScreen();
         
-        // Keep the client running
+        GameClient client = new GameClient(name);
+        
+        if (!client.connect()) {
+            ConsoleUIFormatter.exitAlternativeScreen();
+            return;
+        }
+        
+        ConsoleUIFormatter.printBlankLine();
+        ConsoleUIFormatter.printSectionHeader("Waiting for Game");
+        ConsoleUIFormatter.printWaiting("Waiting for an opponent to join...");
+        ConsoleUIFormatter.printInfo("Color will be assigned randomly");
+        
+        // Keep the client running until disconnected
         try {
-            Thread.currentThread().join();
+            while (client.isConnected()) {
+                Thread.sleep(1000);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            // Always restore the original terminal screen on exit
+            ConsoleUIFormatter.exitAlternativeScreen();
         }
+        
+        ConsoleUIFormatter.printInfo("Client disconnected. Exiting...");
     }
 }

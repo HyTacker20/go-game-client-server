@@ -7,6 +7,7 @@ import com.example.goboard.model.Player;
 import com.example.goboard.model.Stone;
 import com.example.goboard.strategy.SimpleMoveValidator;
 import com.example.goboard.view.GameUI;
+import com.example.goboard.view.ConsoleUIFormatter;
 
 /**
  * Local game controller that uses a GameUI abstraction.
@@ -20,7 +21,7 @@ public class ConsoleGame {
 
     public ConsoleGame(GameUI ui) {
         this.ui = ui;
-        board = BoardFactory.standard19();
+        board = BoardFactory.small9();
         controller = new GameController(
                 board,
                 new SimpleMoveValidator(),
@@ -29,43 +30,51 @@ public class ConsoleGame {
     }
 
     public void start() {
-        ui.displayMessage("=== GO Game ===");
-        ui.displayBoard(board);
+        // Enable ANSI support and enter alternative screen buffer
+        ConsoleUIFormatter.enableWindowsAnsiSupport();
+        ConsoleUIFormatter.enterAlternativeScreen();
+        
+        try {
+            ConsoleUIFormatter.printHeader("GO Game - Local Mode");
+            ui.displayBoard(board);
 
-        while (true) {
+            while (true) {
             String input = ui.getMoveInput("Move (e.g., D4), 'pass', 'quit': ");
 
-            if (input.equals("quit")) {
-                ui.displayMessage("Game ended.");
-                break;
-            }
+                if (input.equals("quit")) {
+                    ConsoleUIFormatter.printInfo("Game ended.");
+                    break;
+                }
 
             if (input.equals("pass")) {
-                ui.displayMessage("Player passes.");
+                ConsoleUIFormatter.printMessage("Player passes.");
                 controller.pass();
+                ui.displayBoard(board);
                 continue;
             }
 
             int[] pos = parseMove(input);
             if (pos == null) {
-                ui.displayMessage("Invalid move format.");
+                ConsoleUIFormatter.printError("Invalid move format. Use coordinates like D4, A1, etc.");
                 continue;
             }
 
             if (!controller.play(pos[0], pos[1])) {
-                ui.displayMessage("Invalid move.");
+                ConsoleUIFormatter.printError("Invalid move. Try another position.");
+            } else {
+                ConsoleUIFormatter.printSuccess("Move accepted");
             }
 
-            ui.displayBoard(board);
+                ui.displayBoard(board);
+            }
+        } finally {
+            // Always restore the original terminal screen on exit
+            ConsoleUIFormatter.exitAlternativeScreen();
+            ui.close();
         }
-        
-        ui.close();
     }
 
-    /**
-     * Parsuje notację typu A3, D10 itp.
-     * W GO pomija się literę I.
-     */
+    // Parse move notation (e.g., A3, D10). Note: skips I column in Go
     private int[] parseMove(String move) {
         if (move.length() < 2) return null;
 
@@ -73,10 +82,10 @@ public class ConsoleGame {
         if (colChar < 'A' || colChar > 'T' || colChar == 'I') return null;
 
         int col = colChar - 'A';
-        if (colChar > 'I') col--; // pominięcie I
+        if (colChar > 'I') col--;
 
         try {
-            int row = Integer.parseInt(move.substring(1)) - 1; // w kodzie start od 0
+            int row = Integer.parseInt(move.substring(1)) - 1;
             return new int[]{row, col};
         } catch (NumberFormatException e) {
             return null;

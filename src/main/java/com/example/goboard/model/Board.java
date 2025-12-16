@@ -30,21 +30,11 @@ public class Board {
     public void addListener(BoardListener l) { listeners.add(l); }
     public void removeListener(BoardListener l) { listeners.remove(l); }
 
-    /**
-     * Publiczna metoda używana przez GameController.
-     * Teraz po prostu korzysta z placeSimple().
-     */
     public int placeStone(int row, int col, Stone stone) {
         return placeSimple(row, col, stone);
     }
 
-    /**
-     * Najprostsza implementacja zasad Go:
-     * - pojedyncze kamienie
-     * - liczenie oddechów
-     * - usuwanie martwych sąsiadów
-     * - zakaz samobójstwa
-     */
+    // Implements Go rules: stone placement, group capture, suicide prevention
     public int placeSimple(int row, int col, Stone stone) {
         Intersection it = getIntersection(row, col);
         if (it == null || !it.isEmpty()) return -1;
@@ -57,7 +47,6 @@ public class Board {
                 {1, 0}, {-1, 0}, {0, 1}, {0, -1}
         };
 
-        // spróbuj zbić jednego sąsiada
         for (int[] d : dirs) {
             Intersection n = getIntersection(row + d[0], col + d[1]);
             if (n == null || n.isEmpty()) continue;
@@ -69,7 +58,6 @@ public class Board {
             }
         }
 
-        // sprawdź samobójstwo
         if (countSingleStoneLiberties(row, col) == 0) {
             it.setStone(null);
             return -1;

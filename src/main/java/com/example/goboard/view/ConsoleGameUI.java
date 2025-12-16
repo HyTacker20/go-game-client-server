@@ -19,7 +19,9 @@ public class ConsoleGameUI implements GameUI {
     
     @Override
     public void displayBoard(Board board) {
-        System.out.println(renderer.render(board));
+        ConsoleUIFormatter.clearScreen();
+        String boardString = renderer.render(board);
+        ConsoleUIFormatter.printBoardWithFrame(boardString);
     }
     
     @Override
@@ -30,7 +32,7 @@ public class ConsoleGameUI implements GameUI {
     
     @Override
     public void displayMessage(String message) {
-        System.out.println(message);
+        ConsoleUIFormatter.printMessage(message);
     }
     
     @Override
@@ -48,9 +50,9 @@ public class ConsoleGameUI implements GameUI {
                 if (value >= min && value <= max) {
                     return value;
                 }
-                System.out.println("Please enter a value between " + min + " and " + max);
+                ConsoleUIFormatter.printWarning("Please enter a value between " + min + " and " + max);
             } catch (NumberFormatException e) {
-                System.out.println("Invalid input. Please enter a number.");
+                ConsoleUIFormatter.printError("Invalid input. Please enter a number.");
             }
         }
     }

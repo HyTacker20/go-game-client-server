@@ -11,6 +11,7 @@ public class MoveHandler implements MessageHandler {
     @Override
     public void handle(MessageHandlerContext context, GameMessage message) {
         if (!context.isGameActive() || context.getOpponent() == null) {
+            System.err.println("[MoveHandler] Game not active or no opponent");
             GameMessage response = new GameMessage.TextMessage(
                 GameMessage.MessageType.ERROR,
                 "Game not active");
@@ -26,13 +27,14 @@ public class MoveHandler implements MessageHandler {
         int[][] boardState = context.serializeBoard(context.getBoard());
         
         if (success) {
+            String position = formatPosition(row, col);
+            System.out.println("[GAME] ● " + context.getPlayerName() + " played at " + position);
             GameMessage response = new GameMessage.MoveResponseMessage(
                 true,
                 "Move accepted at (" + row + ", " + col + ")",
                 boardState);
             context.sendMessage(response);
             
-            // Notify opponent
             GameMessage opponentMsg = new GameMessage.OpponentMoveMessage(
                 row, col,
                 "Opponent played at (" + row + ", " + col + ")",
@@ -45,5 +47,10 @@ public class MoveHandler implements MessageHandler {
                 boardState);
             context.sendMessage(response);
         }
+    }
+    
+    private String formatPosition(int row, int col) {
+        char colChar = col < 8 ? (char)('A' + col) : (char)('A' + col + 1);
+        return String.valueOf(colChar) + (row + 1);
     }
 }

@@ -10,6 +10,8 @@ public class ResignHandler implements MessageHandler {
     @Override
     public void handle(MessageHandlerContext context, GameMessage message) {
         if (context.isGameActive() && context.getOpponent() != null) {
+            System.out.println("[GAME] ☠ " + context.getPlayerName() + " resigned. " + context.getOpponent().getPlayerName() + " wins!");
+            
             GameMessage gameOverMsg = new GameMessage.TextMessage(
                 GameMessage.MessageType.GAME_OVER,
                 "Opponent resigned. You win!");

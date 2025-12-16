@@ -129,12 +129,10 @@ public abstract class GameMessage implements Serializable {
      */
     public static class JoinGameMessage extends GameMessage {
         private String playerName;
-        private String playerColor;
 
-        public JoinGameMessage(String playerName, String playerColor) {
+        public JoinGameMessage(String playerName) {
             super(MessageType.JOIN_GAME);
             this.playerName = playerName;
-            this.playerColor = playerColor;
         }
 
         public String getPlayerName() {
@@ -145,17 +143,9 @@ public abstract class GameMessage implements Serializable {
             this.playerName = playerName;
         }
 
-        public String getPlayerColor() {
-            return playerColor;
-        }
-
-        public void setPlayerColor(String playerColor) {
-            this.playerColor = playerColor;
-        }
-
         @Override
         public String toString() {
-            return "JoinGameMessage{playerName='" + playerName + "', playerColor='" + playerColor + "'}";
+            return "JoinGameMessage{playerName='" + playerName + "'}";
         }
     }
 
