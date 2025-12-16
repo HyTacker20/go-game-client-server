@@ -37,7 +37,7 @@ public class StartGameHandler implements MessageHandler {
         }
         
         // Initialize game
-        Board board = BoardFactory.standard19();
+        Board board = BoardFactory.small9();
         context.setBoard(board);
         
         // Randomly assign colors to players, regardless of prior preference

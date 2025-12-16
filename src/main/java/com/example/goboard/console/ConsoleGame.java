@@ -20,7 +20,7 @@ public class ConsoleGame {
 
     public ConsoleGame(GameUI ui) {
         this.ui = ui;
-        board = BoardFactory.standard19();
+        board = BoardFactory.small9();
         controller = new GameController(
                 board,
                 new SimpleMoveValidator(),

@@ -30,13 +30,13 @@ public class GameClient {
     public GameClient(String name, String color) {
         this.playerName = name;
         this.playerColor = color;
-        this.board = new Board(19);
+        this.board = new Board(9);
     }
 
     public GameClient(String name) {
         this.playerName = name;
         this.playerColor = "RANDOM";
-        this.board = new Board(19);
+        this.board = new Board(9);
     }
 
     public boolean connect() {
