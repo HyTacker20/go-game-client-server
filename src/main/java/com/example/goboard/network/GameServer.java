@@ -36,7 +36,7 @@ public class GameServer {
             while (running) {
                 try {
                     Socket clientSocket = serverSocket.accept();
-                    System.out.println("New client connection from: " + clientSocket.getInetAddress());
+                    System.out.println("[SERVER] ✓ New client connected from " + clientSocket.getInetAddress());
                     
                     ClientHandler handler = new ClientHandler(clientSocket, this);
                     connectedClients.add(handler);
@@ -99,7 +99,11 @@ public class GameServer {
     }
 
     private void startGame(ClientHandler player1, ClientHandler player2) {
-        System.out.println("[GameServer] Starting game: " + player1.getPlayerName() + " vs " + player2.getPlayerName());
+        System.out.println("\n[SERVER] ═══════════════════════════════════════");
+        System.out.println("[SERVER] ⚔  Starting new game");
+        System.out.println("[SERVER]    Player 1: " + player1.getPlayerName());
+        System.out.println("[SERVER]    Player 2: " + player2.getPlayerName());
+        System.out.println("[SERVER] ═══════════════════════════════════════\n");
         
         // Set both players as unavailable
         player1.setAvailable(false);
@@ -121,23 +125,22 @@ public class GameServer {
     }
 
     public void registerClient(String name, ClientHandler handler) {
-        System.out.println("[GameServer] Registering client: " + name);
         clientByName.put(name, handler);
+        System.out.println("[SERVER] ► " + name + " registered and ready");
     }
 
     public void unregisterClient(String name) {
-        System.out.println("[GameServer] Unregistering client: " + name);
         clientByName.remove(name);
+        if (name != null) {
+            System.out.println("[SERVER] ◄ " + name + " disconnected");
+        }
     }
 
     public ClientHandler findClient(String name) {
-        ClientHandler handler = clientByName.get(name);
-        System.out.println("[GameServer] Looking for client: " + name + " - " + (handler != null ? "FOUND" : "NOT FOUND"));
-        return handler;
+        return clientByName.get(name);
     }
 
     public void removeHandler(ClientHandler handler) {
-        System.out.println("[GameServer] Removing handler for client: " + handler.getPlayerName());
         connectedClients.remove(handler);
     }
 

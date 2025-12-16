@@ -7,16 +7,17 @@ import com.example.goboard.network.GameClient;
 import com.example.goboard.network.GameServer;
 import com.example.goboard.view.UIFactory;
 import com.example.goboard.view.GameUI;
+import com.example.goboard.view.ConsoleUIFormatter;
 
 public class App {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         
-        System.out.println("=== GO Game ===");
+        ConsoleUIFormatter.printHeader("GO Game");
         System.out.println("1. Local Game (Console)");
         System.out.println("2. Start Game Server");
         System.out.println("3. Join Game as Client");
-        System.out.print("Choose option (1-3): ");
+        System.out.print("\nChoose option (1-3): ");
         
         String choice = scanner.nextLine().trim();
         
@@ -31,13 +32,13 @@ public class App {
                 playAsClient(scanner);
                 break;
             default:
-                System.out.println("Invalid choice");
+                ConsoleUIFormatter.printError("Invalid choice");
                 scanner.close();
         }
     }
     
     private static void playLocalGame(Scanner scanner) {
-        System.out.println("\nStarting local console game...\n");
+        ConsoleUIFormatter.printInfo("Starting local console game...");
         
         GameUI ui = UIFactory.createUI(UIFactory.UIType.CONSOLE);
         ConsoleGame game = new ConsoleGame(ui);
@@ -47,7 +48,7 @@ public class App {
     }
     
     private static void startServer() {
-        System.out.println("\nStarting game server...");
+        ConsoleUIFormatter.printInfo("Starting game server...");
         GameServer server = new GameServer();
         server.start();
     }
@@ -59,15 +60,10 @@ public class App {
         GameClient client = new GameClient(name);
         
         if (!client.connect()) {
-            System.out.println("Failed to connect to server");
+            ConsoleUIFormatter.printError("Failed to connect to server");
             scanner.close();
             return;
         }
-        
-        System.out.println("\nConnected to server!");
-        System.out.println("Your name: " + name);
-        System.out.println("Color will be assigned randomly.");
-        System.out.println("\nWaiting for opponent and game start...");
         
         // Keep running until disconnected
         try {

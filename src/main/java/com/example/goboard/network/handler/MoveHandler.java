@@ -23,20 +23,12 @@ public class MoveHandler implements MessageHandler {
         int row = moveMsg.getRow();
         int col = moveMsg.getCol();
         
-        System.out.println("[MoveHandler] Processing move at (" + row + ", " + col + ") for player: " + context.getPlayerName());
         boolean success = context.getGameController().play(row, col);
         int[][] boardState = context.serializeBoard(context.getBoard());
         
-        System.out.println("[MoveHandler] Board state after move:");
-        for (int r = 0; r < Math.min(3, boardState.length); r++) {
-            for (int c = 0; c < Math.min(3, boardState[r].length); c++) {
-                System.out.print(boardState[r][c] + " ");
-            }
-            System.out.println();
-        }
-        
         if (success) {
-            System.out.println("[MoveHandler] Move accepted! Sending to opponent: " + context.getOpponent().getPlayerName());
+            String position = formatPosition(row, col);
+            System.out.println("[GAME] ● " + context.getPlayerName() + " played at " + position);
             GameMessage response = new GameMessage.MoveResponseMessage(
                 true,
                 "Move accepted at (" + row + ", " + col + ")",
@@ -49,12 +41,16 @@ public class MoveHandler implements MessageHandler {
                 boardState);
             context.getOpponent().sendMessage(opponentMsg);
         } else {
-            System.out.println("[MoveHandler] Invalid move at (" + row + ", " + col + ")");
             GameMessage response = new GameMessage.MoveResponseMessage(
                 false,
                 "Invalid move at (" + row + ", " + col + ")",
                 boardState);
             context.sendMessage(response);
         }
+    }
+    
+    private String formatPosition(int row, int col) {
+        char colChar = col < 8 ? (char)('A' + col) : (char)('A' + col + 1);
+        return String.valueOf(colChar) + (row + 1);
     }
 }

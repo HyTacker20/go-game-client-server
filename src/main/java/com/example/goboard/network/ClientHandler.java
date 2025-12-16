@@ -60,9 +60,9 @@ public class ClientHandler implements Runnable {
                 processMessage(message);
             }
         } catch (EOFException e) {
-            System.out.println("Client " + playerName + " disconnected");
+            // Normal disconnection
         } catch (ClassNotFoundException | IOException e) {
-            System.err.println("Error processing message from " + playerName + ": " + e.getMessage());
+            // Connection error - will be logged in cleanup if needed
         } finally {
             cleanup();
         }
@@ -102,7 +102,7 @@ public class ClientHandler implements Runnable {
                 out.flush();
             }
         } catch (IOException e) {
-            System.err.println("Error sending message to " + playerName + ": " + e.getMessage());
+            // Client disconnected or unreachable
         }
     }
 

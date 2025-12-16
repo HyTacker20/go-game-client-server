@@ -90,6 +90,6 @@ public class StartGameHandler implements MessageHandler {
             opponent.sendMessage(startMsg);
         }
         
-        System.out.println("Game started: " + blackPlayer.getName() + " (BLACK) vs " + whitePlayer.getName() + " (WHITE)");
+        System.out.println("[GAME] ✦ " + blackPlayer.getName() + " (BLACK) vs " + whitePlayer.getName() + " (WHITE)");
     }
 }

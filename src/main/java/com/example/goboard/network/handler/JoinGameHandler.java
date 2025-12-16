@@ -23,7 +23,7 @@ public class JoinGameHandler implements MessageHandler {
             "Waiting for opponent...");
         context.sendMessage(response);
         
-        System.out.println("Player " + playerName + " joined the lobby");
+        System.out.println("[LOBBY] ► " + playerName + " joined the lobby");
         
         // Mark as available for matching
         context.setAvailable(true);

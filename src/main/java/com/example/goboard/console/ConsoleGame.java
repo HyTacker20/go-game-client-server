@@ -7,6 +7,7 @@ import com.example.goboard.model.Player;
 import com.example.goboard.model.Stone;
 import com.example.goboard.strategy.SimpleMoveValidator;
 import com.example.goboard.view.GameUI;
+import com.example.goboard.view.ConsoleUIFormatter;
 
 /**
  * Local game controller that uses a GameUI abstraction.
@@ -29,31 +30,34 @@ public class ConsoleGame {
     }
 
     public void start() {
-        ui.displayMessage("=== GO Game ===");
+        ConsoleUIFormatter.printHeader("GO Game - Local Mode");
         ui.displayBoard(board);
 
         while (true) {
             String input = ui.getMoveInput("Move (e.g., D4), 'pass', 'quit': ");
 
             if (input.equals("quit")) {
-                ui.displayMessage("Game ended.");
+                ConsoleUIFormatter.printInfo("Game ended.");
                 break;
             }
 
             if (input.equals("pass")) {
-                ui.displayMessage("Player passes.");
+                ConsoleUIFormatter.printMessage("Player passes.");
                 controller.pass();
+                ui.displayBoard(board);
                 continue;
             }
 
             int[] pos = parseMove(input);
             if (pos == null) {
-                ui.displayMessage("Invalid move format.");
+                ConsoleUIFormatter.printError("Invalid move format. Use coordinates like D4, A1, etc.");
                 continue;
             }
 
             if (!controller.play(pos[0], pos[1])) {
-                ui.displayMessage("Invalid move.");
+                ConsoleUIFormatter.printError("Invalid move. Try another position.");
+            } else {
+                ConsoleUIFormatter.printSuccess("Move accepted");
             }
 
             ui.displayBoard(board);

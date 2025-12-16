@@ -18,6 +18,7 @@ public class PassHandler implements MessageHandler {
         }
         
         context.getGameController().pass();
+        System.out.println("[GAME] ○ " + context.getPlayerName() + " passed their turn");
         
         int[][] boardState = context.serializeBoard(context.getBoard());
         GameMessage response = new GameMessage.MoveResponseMessage(
