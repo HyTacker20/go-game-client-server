@@ -179,7 +179,8 @@ public class GameClient {
             for (int c = 0; c < boardState[r].length; c++) {
                 Intersection inter = board.getIntersection(r, c);
                 if (boardState[r][c] == 0) {
-                    // Empty, do nothing
+                    // Empty - handles captured stones
+                    inter.setStone(null);
                 } else if (boardState[r][c] == 1) {
                     // Black stone
                     inter.setStone(new Stone(Stone.Color.BLACK));

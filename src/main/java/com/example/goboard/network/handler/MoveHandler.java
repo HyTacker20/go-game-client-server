@@ -27,6 +27,14 @@ public class MoveHandler implements MessageHandler {
         boolean success = context.getGameController().play(row, col);
         int[][] boardState = context.serializeBoard(context.getBoard());
         
+        System.out.println("[MoveHandler] Board state after move:");
+        for (int r = 0; r < Math.min(3, boardState.length); r++) {
+            for (int c = 0; c < Math.min(3, boardState[r].length); c++) {
+                System.out.print(boardState[r][c] + " ");
+            }
+            System.out.println();
+        }
+        
         if (success) {
             System.out.println("[MoveHandler] Move accepted! Sending to opponent: " + context.getOpponent().getPlayerName());
             GameMessage response = new GameMessage.MoveResponseMessage(
@@ -35,7 +43,6 @@ public class MoveHandler implements MessageHandler {
                 boardState);
             context.sendMessage(response);
             
-            // Notify opponent
             GameMessage opponentMsg = new GameMessage.OpponentMoveMessage(
                 row, col,
                 "Opponent played at (" + row + ", " + col + ")",

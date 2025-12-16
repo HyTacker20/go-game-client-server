@@ -62,10 +62,7 @@ public class ConsoleGame {
         ui.close();
     }
 
-    /**
-     * Parsuje notację typu A3, D10 itp.
-     * W GO pomija się literę I.
-     */
+    // Parse move notation (e.g., A3, D10). Note: skips I column in Go
     private int[] parseMove(String move) {
         if (move.length() < 2) return null;
 
@@ -73,10 +70,10 @@ public class ConsoleGame {
         if (colChar < 'A' || colChar > 'T' || colChar == 'I') return null;
 
         int col = colChar - 'A';
-        if (colChar > 'I') col--; // pominięcie I
+        if (colChar > 'I') col--;
 
         try {
-            int row = Integer.parseInt(move.substring(1)) - 1; // w kodzie start od 0
+            int row = Integer.parseInt(move.substring(1)) - 1;
             return new int[]{row, col};
         } catch (NumberFormatException e) {
             return null;

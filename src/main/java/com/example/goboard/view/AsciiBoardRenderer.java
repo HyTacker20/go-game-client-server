@@ -29,13 +29,13 @@ public class AsciiBoardRenderer implements BoardRenderer {
             for (int c = 0; c < n; c++) {
                 Intersection it = board.getIntersection(r, c);
                 if (it.isEmpty()) {
-                    sb.append(" ·"); // Middle dot for empty intersection
+                    sb.append(" ."); // Dot for empty intersection
                 } else {
                     Stone stone = it.getStone();
                     if (stone.getColor() == Stone.Color.BLACK) {
-                        sb.append(" ●"); // Black circle
+                        sb.append(" X"); // X for black stone
                     } else {
-                        sb.append(" ○"); // White circle
+                        sb.append(" O"); // O for white stone
                     }
                 }
             }
