@@ -99,7 +99,7 @@ public class GameServer {
     }
 
     private void startGame(ClientHandler player1, ClientHandler player2) {
-        System.out.println("Starting game: " + player1.getPlayerName() + " vs " + player2.getPlayerName());
+        System.out.println("[GameServer] Starting game: " + player1.getPlayerName() + " vs " + player2.getPlayerName());
         
         // Set both players as unavailable
         player1.setAvailable(false);
@@ -121,18 +121,23 @@ public class GameServer {
     }
 
     public void registerClient(String name, ClientHandler handler) {
+        System.out.println("[GameServer] Registering client: " + name);
         clientByName.put(name, handler);
     }
 
     public void unregisterClient(String name) {
+        System.out.println("[GameServer] Unregistering client: " + name);
         clientByName.remove(name);
     }
 
     public ClientHandler findClient(String name) {
-        return clientByName.get(name);
+        ClientHandler handler = clientByName.get(name);
+        System.out.println("[GameServer] Looking for client: " + name + " - " + (handler != null ? "FOUND" : "NOT FOUND"));
+        return handler;
     }
 
     public void removeHandler(ClientHandler handler) {
+        System.out.println("[GameServer] Removing handler for client: " + handler.getPlayerName());
         connectedClients.remove(handler);
     }
 
@@ -143,6 +148,7 @@ public class GameServer {
                 available.add(handler.getPlayerName());
             }
         }
+        System.out.println("[GameServer] Available players: " + available);
         return available;
     }
 

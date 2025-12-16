@@ -47,9 +47,10 @@ public class GameClient {
             in = new ObjectInputStream(socket.getInputStream());
             connected = true;
             
-            System.out.println("Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
+            System.out.println("[GameClient] Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
             
             GameMessage joinMsg = new GameMessage.JoinGameMessage(playerName);
+            System.out.println("[GameClient] Sending join message for player: " + playerName);
             sendMessage(joinMsg);
             
             // Start listening for server messages
@@ -82,6 +83,7 @@ public class GameClient {
     }
 
     private void handleServerMessage(GameMessage message) {
+        System.out.println("[GameClient] Received message type: " + message.getType());
         switch (message.getType()) {
             case WAITING:
                 if (message instanceof GameMessage.TextMessage) {
@@ -90,6 +92,7 @@ public class GameClient {
                 break;
             case YOUR_TURN:
                 myTurn = true;
+                System.out.println("[GameClient] It's our turn!");
                 if (message instanceof GameMessage.BoardStateMessage) {
                     GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
                     System.out.println("\n" + stateMsg.getMessage());
@@ -102,6 +105,7 @@ public class GameClient {
                 break;
             case OPPONENT_TURN:
                 myTurn = false;
+                System.out.println("[GameClient] Opponent's turn");
                 if (message instanceof GameMessage.BoardStateMessage) {
                     GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
                     System.out.println("\n" + stateMsg.getMessage());
@@ -112,6 +116,7 @@ public class GameClient {
                 }
                 break;
             case OPPONENT_MOVE:
+                System.out.println("[GameClient] Opponent made a move");
                 if (message instanceof GameMessage.OpponentMoveMessage) {
                     GameMessage.OpponentMoveMessage moveMsg = (GameMessage.OpponentMoveMessage) message;
                     System.out.println("\n" + moveMsg.getMessage());
