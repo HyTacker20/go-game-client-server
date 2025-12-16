@@ -57,19 +57,30 @@ public class App {
         System.out.print("Enter your name: ");
         String name = scanner.nextLine().trim();
         
+        // Enable ANSI support and enter alternative screen buffer
+        ConsoleUIFormatter.enableWindowsAnsiSupport();
+        ConsoleUIFormatter.enterAlternativeScreen();
+        
         GameClient client = new GameClient(name);
         
         if (!client.connect()) {
             ConsoleUIFormatter.printError("Failed to connect to server");
+            ConsoleUIFormatter.exitAlternativeScreen();
             scanner.close();
             return;
         }
         
         // Keep running until disconnected
         try {
-            Thread.currentThread().join();
+            while (client.isConnected()) {
+                Thread.sleep(1000);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            // Always restore the original terminal screen on exit
+            ConsoleUIFormatter.exitAlternativeScreen();
+            scanner.close();
         }
     }
 }

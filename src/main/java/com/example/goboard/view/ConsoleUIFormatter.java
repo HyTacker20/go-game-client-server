@@ -1,5 +1,7 @@
 package com.example.goboard.view;
 
+import java.io.IOException;
+
 /**
  * Handles all console UI formatting for the GO game.
  * Provides consistent visual presentation with sections, separators, and styled messages.
@@ -16,9 +18,59 @@ public class ConsoleUIFormatter {
     public static final String CYAN = "\u001B[36m";
     public static final String WHITE = "\u001B[37m";
     
+    // ANSI screen control codes
+    private static final String ENTER_ALT_SCREEN = "\u001B[?1049h";
+    private static final String EXIT_ALT_SCREEN = "\u001B[?1049l";
+    private static final String CLEAR_SCREEN = "\u001B[2J\u001B[H";
+    
     private static final int SECTION_WIDTH = 50;
     private static final String HORIZONTAL_LINE = "=".repeat(SECTION_WIDTH);
     private static final String SECTION_DIVIDER = "-".repeat(SECTION_WIDTH);
+    
+    /**
+     * Enables ANSI escape code support on Windows 10+ terminals.
+     * This must be called before using any ANSI features on Windows.
+     */
+    public static void enableWindowsAnsiSupport() {
+        if (System.getProperty("os.name").toLowerCase().contains("win")) {
+            try {
+                new ProcessBuilder("cmd", "/c", "echo")
+                    .inheritIO()
+                    .start()
+                    .waitFor();
+            } catch (IOException | InterruptedException e) {
+                // Silently ignore if enabling fails
+            }
+        }
+    }
+    
+    /**
+     * Enters the alternative screen buffer.
+     * This creates a separate screen where the game will run,
+     * preserving the original terminal content.
+     */
+    public static void enterAlternativeScreen() {
+        System.out.print(ENTER_ALT_SCREEN);
+        System.out.flush();
+    }
+    
+    /**
+     * Exits the alternative screen buffer.
+     * This restores the original terminal content that was present
+     * before the game started.
+     */
+    public static void exitAlternativeScreen() {
+        System.out.print(EXIT_ALT_SCREEN);
+        System.out.flush();
+    }
+    
+    /**
+     * Clears the entire screen and moves cursor to top-left corner.
+     */
+    public static void clearScreen() {
+        System.out.print(CLEAR_SCREEN);
+        System.out.flush();
+    }
     
     /**
      * Prints a main header with title

@@ -30,16 +30,21 @@ public class ConsoleGame {
     }
 
     public void start() {
-        ConsoleUIFormatter.printHeader("GO Game - Local Mode");
-        ui.displayBoard(board);
+        // Enable ANSI support and enter alternative screen buffer
+        ConsoleUIFormatter.enableWindowsAnsiSupport();
+        ConsoleUIFormatter.enterAlternativeScreen();
+        
+        try {
+            ConsoleUIFormatter.printHeader("GO Game - Local Mode");
+            ui.displayBoard(board);
 
-        while (true) {
+            while (true) {
             String input = ui.getMoveInput("Move (e.g., D4), 'pass', 'quit': ");
 
-            if (input.equals("quit")) {
-                ConsoleUIFormatter.printInfo("Game ended.");
-                break;
-            }
+                if (input.equals("quit")) {
+                    ConsoleUIFormatter.printInfo("Game ended.");
+                    break;
+                }
 
             if (input.equals("pass")) {
                 ConsoleUIFormatter.printMessage("Player passes.");
@@ -60,10 +65,13 @@ public class ConsoleGame {
                 ConsoleUIFormatter.printSuccess("Move accepted");
             }
 
-            ui.displayBoard(board);
+                ui.displayBoard(board);
+            }
+        } finally {
+            // Always restore the original terminal screen on exit
+            ConsoleUIFormatter.exitAlternativeScreen();
+            ui.close();
         }
-        
-        ui.close();
     }
 
     // Parse move notation (e.g., A3, D10). Note: skips I column in Go

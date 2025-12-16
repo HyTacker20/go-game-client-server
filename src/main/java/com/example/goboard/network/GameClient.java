@@ -111,6 +111,8 @@ public class GameClient {
                     if (stateMsg.getBoardState() != null) {
                         updateBoardState(stateMsg.getBoardState());
                         displayBoard();
+                        ConsoleUIFormatter.printTurnInfo(playerName, playerColor, false);
+                        ConsoleUIFormatter.printWaiting("Waiting for opponent's move...");
                     }
                 }
                 break;
@@ -192,6 +194,7 @@ public class GameClient {
     }
 
     private void displayBoard() {
+        ConsoleUIFormatter.clearScreen();
         String boardString = renderer.render(board);
         ConsoleUIFormatter.printBoardWithFrame(boardString);
     }
@@ -350,9 +353,14 @@ public class GameClient {
             return;
         }
         
+        // Enable ANSI support and enter alternative screen buffer
+        ConsoleUIFormatter.enableWindowsAnsiSupport();
+        ConsoleUIFormatter.enterAlternativeScreen();
+        
         GameClient client = new GameClient(name);
         
         if (!client.connect()) {
+            ConsoleUIFormatter.exitAlternativeScreen();
             return;
         }
         
@@ -368,6 +376,9 @@ public class GameClient {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            // Always restore the original terminal screen on exit
+            ConsoleUIFormatter.exitAlternativeScreen();
         }
         
         ConsoleUIFormatter.printInfo("Client disconnected. Exiting...");

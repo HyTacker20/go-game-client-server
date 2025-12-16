@@ -19,6 +19,7 @@ public class ConsoleGameUI implements GameUI {
     
     @Override
     public void displayBoard(Board board) {
+        ConsoleUIFormatter.clearScreen();
         String boardString = renderer.render(board);
         ConsoleUIFormatter.printBoardWithFrame(boardString);
     }
