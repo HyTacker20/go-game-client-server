@@ -145,15 +145,14 @@ public class GameClient {
                     GameMessage.MoveResponseMessage respMsg = (GameMessage.MoveResponseMessage) message;
                     if (respMsg.isSuccess()) {
                         System.out.println("✓ " + respMsg.getMessage());
+                        if (respMsg.getBoardState() != null) {
+                            updateBoardState(respMsg.getBoardState());
+                            displayBoard();
+                        }
                     } else {
                         System.out.println("✗ " + respMsg.getMessage());
-                        if (myTurn) {
-                            handlePlayerMove();
-                        }
-                    }
-                    if (respMsg.getBoardState() != null) {
-                        updateBoardState(respMsg.getBoardState());
-                        displayBoard();
+                        myTurn = true;  // Re-enable turn to allow player to try again
+                        handlePlayerMove();
                     }
                 }
                 break;
