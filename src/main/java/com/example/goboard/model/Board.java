@@ -2,6 +2,7 @@ package com.example.goboard.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.example.goboard.observer.BoardListener;
 
 /**
  * Represents the Go board.
