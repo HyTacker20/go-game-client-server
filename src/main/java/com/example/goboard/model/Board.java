@@ -2,7 +2,6 @@ package com.example.goboard.model;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.example.goboard.observer.BoardListener;
 
 /**
  * Represents the Go board.
@@ -24,9 +23,6 @@ public class Board {
 
     /** 2D grid of board intersections */
     private final Intersection[][] intersections;
-
-    /** Observers notified about board changes */
-    private final List<BoardListener> listeners = new ArrayList<>();
 
     /**
      * Creates a new Go board of given size.
@@ -62,16 +58,6 @@ public class Board {
     public Intersection getIntersection(int row, int col) {
         if (row < 0 || row >= size || col < 0 || col >= size) return null;
         return intersections[row][col];
-    }
-
-    /** Registers a board listener (observer pattern). */
-    public void addListener(BoardListener l) {
-        listeners.add(l);
-    }
-
-    /** Removes a board listener. */
-    public void removeListener(BoardListener l) {
-        listeners.remove(l);
     }
 
     /**
