@@ -252,8 +252,6 @@ public class Board {
      * - Players are not allowed to make a move that would recreate the exact
      *   board position from the previous turn.
      *
-     * @param previousState a 2D array of Stone.Color representing the previous board state
-     * @param currentState  a 2D array of Stone.Color representing the current board state
      * @return true if the current state is exactly the same as the previous state, false otherwise
      */
     private boolean isSameAsPrevious(Stone.Color[][] state) {
@@ -277,7 +275,6 @@ public class Board {
      * - Reverting the board to a previous state to enforce the Ko rule
      * - Resetting the board after testing hypothetical moves
      *
-     * @param savedState a 2D array of Stone.Color representing the board snapshot
      */
     private void restoreBoard(Stone.Color[][] state) {
         for (int r = 0; r < size; r++) {
