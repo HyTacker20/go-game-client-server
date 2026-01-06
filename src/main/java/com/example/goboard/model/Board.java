@@ -73,8 +73,8 @@ public class Board {
     /**
      * Simplified Go rules implementation:
      * - places a stone
-     * - captures ONLY single adjacent enemy stones
-     * - prevents suicide (single stone only)
+     * - captures adjacent enemy stones
+     * - prevents suicide
      *
      * @return number of captured stones, or -1 if move is illegal
      */
@@ -82,17 +82,14 @@ public class Board {
         Intersection it = getIntersection(row, col);
         if (it == null || !it.isEmpty()) return -1;
 
-        // Place stone on the board
         it.setStone(stone);
 
         int captured = 0;
 
-        // Directions: up, down, left, right
         int[][] dirs = {
                 {1, 0}, {-1, 0}, {0, 1}, {0, -1}
         };
 
-        // Check adjacent enemy stones for capture
         for (int[] d : dirs) {
             Intersection n = getIntersection(row + d[0], col + d[1]);
             if (n == null || n.isEmpty()) continue;
@@ -104,8 +101,9 @@ public class Board {
             }
         }
 
-        // Suicide check (single stone only)
-        if (countGroupLiberties(row, col) == 0) {
+        int liberties = countGroupLiberties(row, col);
+
+        if (liberties == 0 && captured == 0) {
             it.setStone(null);
             return -1;
         }
@@ -113,9 +111,9 @@ public class Board {
         return captured;
     }
 
+
     /**
      * Counts liberties (empty adjacent intersections)
-     * for a SINGLE stone (no group logic).
      *
      * @return number of liberties
      */
@@ -177,6 +175,22 @@ public class Board {
         return true;
     }
 
+    /**
+     * Collects all stones belonging to the same connected group (chain).
+     *
+     * A group in Go is defined as stones of the same color
+     * connected orthogonally (up, down, left, right).
+     *
+     * This method performs a depth-first search (DFS) starting
+     * from the given position and gathers all connected stones
+     * of the same color into the provided list.
+     *
+     * @param row     starting row
+     * @param col     starting column
+     * @param color   color of the group being collected
+     * @param visited helper array preventing infinite recursion
+     * @param group   list where all stones of the group are stored
+     */
 
     private void collectGroup(int row, int col, Stone.Color color, boolean[][] visited, List<Intersection> group) {
         Intersection it = getIntersection(row, col);
