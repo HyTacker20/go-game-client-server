@@ -24,6 +24,9 @@ public class Board {
     /** 2D grid of board intersections */
     private final Intersection[][] intersections;
 
+    /** Previous board state used to enforce the Ko rule and undo moves. */
+    private Stone.Color[][] previousPosition;
+
     /**
      * Creates a new Go board of given size.
      *
@@ -75,6 +78,7 @@ public class Board {
      * - places a stone
      * - captures adjacent enemy stones
      * - prevents suicide
+     * - ko rule
      *
      * @return number of captured stones, or -1 if move is illegal
      */
@@ -82,10 +86,11 @@ public class Board {
         Intersection it = getIntersection(row, col);
         if (it == null || !it.isEmpty()) return -1;
 
+        Stone.Color[][] beforeMove = copyBoardState();
+
         it.setStone(stone);
 
         int captured = 0;
-
         int[][] dirs = {
                 {1, 0}, {-1, 0}, {0, 1}, {0, -1}
         };
@@ -101,12 +106,18 @@ public class Board {
             }
         }
 
-        int liberties = countGroupLiberties(row, col);
-
-        if (liberties == 0 && captured == 0) {
+        if (countGroupLiberties(row, col) == 0 && captured == 0) {
             it.setStone(null);
             return -1;
         }
+
+        Stone.Color[][] afterMove = copyBoardState();
+        if (isSameAsPrevious(afterMove)) {
+            restoreBoard(beforeMove);
+            return -1;
+        }
+
+        previousPosition = beforeMove;
 
         return captured;
     }
@@ -207,6 +218,76 @@ public class Board {
 
         for (int[] d : dirs) {
             collectGroup(row + d[0], col + d[1], color, visited, group);
+        }
+    }
+
+    /**
+     * Creates a copy of the current board state.
+     *
+     * Each intersection on the board is represented by the color of the stone:
+     * - BLACK / WHITE if occupied
+     * - null if empty
+     *
+     * This copy is useful for:
+     * 1. Checking the Ko rule (whether a move would return the board to a previous state)
+     * 2. Undoing moves in case they are illegal
+     *
+     * @return a 2D array of Stone.Color representing the current board state
+     */
+    private Stone.Color[][] copyBoardState() {
+        Stone.Color[][] copy = new Stone.Color[size][size];
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                Intersection it = intersections[r][c];
+                copy[r][c] = it.isEmpty() ? null : it.getStone().getColor();
+            }
+        }
+        return copy;
+    }
+
+    /**
+     * Checks whether the given board state is identical to a previously stored state.
+     *
+     * This is primarily used to enforce the Ko rule in Go:
+     * - Players are not allowed to make a move that would recreate the exact
+     *   board position from the previous turn.
+     *
+     * @param previousState a 2D array of Stone.Color representing the previous board state
+     * @param currentState  a 2D array of Stone.Color representing the current board state
+     * @return true if the current state is exactly the same as the previous state, false otherwise
+     */
+    private boolean isSameAsPrevious(Stone.Color[][] state) {
+        if (previousPosition == null) return false;
+
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                if (previousPosition[r][c] != state[r][c]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Restores the board to a previously saved state.
+     *
+     * This is useful in several scenarios:
+     * - Undoing an illegal move (e.g., a suicide move)
+     * - Reverting the board to a previous state to enforce the Ko rule
+     * - Resetting the board after testing hypothetical moves
+     *
+     * @param savedState a 2D array of Stone.Color representing the board snapshot
+     */
+    private void restoreBoard(Stone.Color[][] state) {
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                if (state[r][c] == null) {
+                    intersections[r][c].setStone(null);
+                } else {
+                    intersections[r][c].setStone(new Stone(state[r][c]));
+                }
+            }
         }
     }
 
