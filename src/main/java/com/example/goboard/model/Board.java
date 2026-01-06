@@ -98,14 +98,14 @@ public class Board {
             if (n == null || n.isEmpty()) continue;
 
             if (n.getStone().getColor() != stone.getColor()) {
-                if (removeSingleStoneIfDead(n.getRow(), n.getCol())) {
+                if (removeGroupIfDead(n.getRow(), n.getCol())) {
                     captured++;
                 }
             }
         }
 
         // Suicide check (single stone only)
-        if (countSingleStoneLiberties(row, col) == 0) {
+        if (countGroupLiberties(row, col) == 0) {
             it.setStone(null);
             return -1;
         }
@@ -119,25 +119,38 @@ public class Board {
      *
      * @return number of liberties
      */
-    public int countSingleStoneLiberties(int row, int col) {
-        Intersection it = getIntersection(row, col);
-        if (it == null || it.isEmpty()) return 0;
+    public int countGroupLiberties(int row, int col) {
+        Intersection start = getIntersection(row, col);
+        if (start == null || start.isEmpty()) return 0;
+
+        boolean[][] visited = new boolean[size][size];
+        List<Intersection> group = new ArrayList<>();
+
+        collectGroup(row, col, start.getStone().getColor(), visited, group);
 
         int liberties = 0;
+        boolean[][] counted = new boolean[size][size];
 
         int[][] dirs = {
                 {1, 0}, {-1, 0}, {0, 1}, {0, -1}
         };
 
-        for (int[] d : dirs) {
-            Intersection n = getIntersection(row + d[0], col + d[1]);
-            if (n != null && n.isEmpty()) {
-                liberties++;
+        for (Intersection it : group) {
+            for (int[] d : dirs) {
+                int r = it.getRow() + d[0];
+                int c = it.getCol() + d[1];
+
+                Intersection n = getIntersection(r, c);
+                if (n != null && n.isEmpty() && !counted[r][c]) {
+                    liberties++;
+                    counted[r][c] = true; // nie liczymy tego samego oddechu 2 razy
+                }
             }
         }
 
         return liberties;
     }
+
 
     /**
      * Removes a stone if it has no liberties.
@@ -145,14 +158,42 @@ public class Board {
      *
      * @return true if stone was removed
      */
-    public boolean removeSingleStoneIfDead(int row, int col) {
-        if (countSingleStoneLiberties(row, col) == 0) {
-            Intersection it = getIntersection(row, col);
-            if (it != null && !it.isEmpty()) {
-                it.setStone(null);
-                return true;
-            }
+    public boolean removeGroupIfDead(int row, int col) {
+        Intersection start = getIntersection(row, col);
+        if (start == null || start.isEmpty()) return false;
+
+        int liberties = countGroupLiberties(row, col);
+        if (liberties > 0) return false;
+
+        boolean[][] visited = new boolean[size][size];
+        List<Intersection> group = new ArrayList<>();
+
+        collectGroup(row, col, start.getStone().getColor(), visited, group);
+
+        for (Intersection it : group) {
+            it.setStone(null);
         }
-        return false;
+
+        return true;
     }
+
+
+    private void collectGroup(int row, int col, Stone.Color color, boolean[][] visited, List<Intersection> group) {
+        Intersection it = getIntersection(row, col);
+        if (it == null || it.isEmpty()) return;
+        if (it.getStone().getColor() != color) return;
+        if (visited[row][col]) return;
+
+        visited[row][col] = true;
+        group.add(it);
+
+        int[][] dirs = {
+                {1, 0}, {-1, 0}, {0, 1}, {0, -1}
+        };
+
+        for (int[] d : dirs) {
+            collectGroup(row + d[0], col + d[1], color, visited, group);
+        }
+    }
+
 }

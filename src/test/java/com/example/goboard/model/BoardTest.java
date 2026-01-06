@@ -22,7 +22,7 @@ public class BoardTest {
         assertEquals(0, captured);
         assertFalse(b.getIntersection(2,2).isEmpty());
         assertEquals(black, b.getIntersection(2,2).getStone());
-        assertEquals(4, b.countSingleStoneLiberties(2,2));
+        assertEquals(4, b.countGroupLiberties(2,2));
     }
 
     @Test
