@@ -24,6 +24,10 @@ public class Board {
     private final Intersection[][] intersections;
     private Stone.Color[][] previousPosition;
 
+    // Prisoners captured during the game
+    private int blackPrisoners = 0;
+    private int whitePrisoners = 0;
+
     public Board(int size) {
         if (size <= 0) throw new IllegalArgumentException();
         this.size = size;
@@ -58,21 +62,28 @@ public class Board {
         Stone.Color[][] before = copyBoardState();
         it.setStone(stone);
 
-        int captured = 0;
+        int capturedThisMove = 0;
         int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
 
         for (int[] d : dirs) {
             Intersection n = getIntersection(row + d[0], col + d[1]);
             if (n != null && !n.isEmpty()
                     && n.getStone().getColor() != stone.getColor()) {
-                if (removeGroupIfDead(n.getRow(), n.getCol())) {
-                    captured++;
+
+                int removed = removeGroupIfDeadAndCount(n.getRow(), n.getCol());
+                if (removed > 0) {
+                    capturedThisMove += removed;
+                    if (stone.getColor() == Stone.Color.BLACK) {
+                        blackPrisoners += removed;
+                    } else {
+                        whitePrisoners += removed;
+                    }
                 }
             }
         }
 
         // suicide
-        if (countGroupLiberties(row, col) == 0 && captured == 0) {
+        if (countGroupLiberties(row, col) == 0 && capturedThisMove == 0) {
             it.setStone(null);
             return -1;
         }
@@ -85,7 +96,7 @@ public class Board {
         }
 
         previousPosition = before;
-        return captured;
+        return capturedThisMove;
     }
 
     /* ======================================================
@@ -116,8 +127,8 @@ public class Board {
         return liberties.size();
     }
 
-    private boolean removeGroupIfDead(int row, int col) {
-        if (countGroupLiberties(row, col) > 0) return false;
+    private int removeGroupIfDeadAndCount(int row, int col) {
+        if (countGroupLiberties(row, col) > 0) return 0;
 
         Intersection start = getIntersection(row, col);
         boolean[][] visited = new boolean[size][size];
@@ -127,7 +138,7 @@ public class Board {
         for (Intersection it : group) {
             it.setStone(null);
         }
-        return true;
+        return group.size();
     }
 
     private void collectGroup(int r, int c, Stone.Color color,
@@ -151,10 +162,13 @@ public class Board {
        ====================================================== */
 
     /**
-     * Prisoners = marked dead stones of the opponent.
+     * Prisoners = captured stones during the game
+     * + marked dead stones of the opponent.
      */
     public int countStones(Stone.Color color) {
-        int prisoners = 0;
+        int prisoners = (color == Stone.Color.BLACK)
+                ? blackPrisoners
+                : whitePrisoners;
 
         for (int r = 0; r < size; r++)
             for (int c = 0; c < size; c++) {
@@ -186,9 +200,8 @@ public class Board {
         for (int r = 0; r < size; r++) {
             for (int c = 0; c < size; c++) {
 
-                if (visited[r][c]) continue;
                 Intersection start = intersections[r][c];
-                if (!start.isEmpty()) continue;
+                if (!start.isEmpty() || visited[r][c]) continue;
 
                 List<Intersection> region = new ArrayList<>();
                 Set<Stone.Color> liberties = new HashSet<>();
@@ -220,24 +233,22 @@ public class Board {
 
         Intersection it = intersections[r][c];
 
-        // Stone: defines a liberty, but does NOT stop exploration elsewhere
+        // Stones define liberties but are not part of the region
         if (!it.isEmpty()) {
             liberties.add(it.getStone().getColor());
             return;
         }
 
-        // Empty point already processed
         if (visited[r][c]) return;
 
         visited[r][c] = true;
         region.add(it);
 
-        collectEmptyGroup(r + 1, c, visited, region, liberties);
-        collectEmptyGroup(r - 1, c, visited, region, liberties);
-        collectEmptyGroup(r, c + 1, visited, region, liberties);
-        collectEmptyGroup(r, c - 1, visited, region, liberties);
+        collectEmptyGroup(r+1, c, visited, region, liberties);
+        collectEmptyGroup(r-1, c, visited, region, liberties);
+        collectEmptyGroup(r, c+1, visited, region, liberties);
+        collectEmptyGroup(r, c-1, visited, region, liberties);
     }
-
 
     /* ======================================================
        UTIL

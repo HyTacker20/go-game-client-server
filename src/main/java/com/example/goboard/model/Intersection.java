@@ -88,4 +88,25 @@ public class Intersection {
     public void toggleDeadMarker() {
         this.markedDead = !this.markedDead;
     }
+
+    /* =====================================================
+       REQUIRED FOR SCORING
+       ===================================================== */
+
+    /**
+     * Returns the color of the stone if this intersection
+     * is marked as dead.
+     *
+     * This method is REQUIRED by the scoring logic.
+     *
+     * @return color of dead stone, or null if:
+     *         - no stone
+     *         - stone is not marked dead
+     */
+    public Stone.Color getMarkedDeadColor() {
+        if (stone == null || !markedDead) {
+            return null;
+        }
+        return stone.getColor();
+    }
 }
