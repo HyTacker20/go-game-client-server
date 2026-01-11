@@ -1,291 +1,270 @@
 package com.example.goboard.model;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
- * Represents the Go board.
+ * Represents a Go board.
  *
- * Responsibilities:
- * - stores board state (intersections and stones)
- * - validates and applies stone placement
- * - counts liberties (simplified: single stone only)
- * - removes stones without liberties
+ * Supports:
+ * - stone placement
+ * - captures
+ * - group liberties
+ * - Japanese scoring (territory + prisoners)
  *
- * NOTE:
- * This implementation supports ONLY single-stone capture.
- * Groups of connected stones are NOT handled yet.
+ * Territory scoring:
+ * Empty intersections are treated as stones of a third color.
+ * Empty points form groups and have liberties just like stones.
+ * If all liberties of an empty group belong to exactly one color,
+ * the whole group counts as territory for that color.
+ * If liberties belong to both colors, the group is neutral.
  */
 public class Board {
 
-    /** Board size (e.g. 9, 13, 19). Fixed after construction. */
     private final int size;
-
-    /** 2D grid of board intersections */
     private final Intersection[][] intersections;
-
-    /** Previous board state used to enforce the Ko rule and undo moves. */
     private Stone.Color[][] previousPosition;
 
-    /**
-     * Creates a new Go board of given size.
-     *
-     * @param size board dimension (size x size)
-     */
     public Board(int size) {
-        if (size <= 0) throw new IllegalArgumentException("Size must be > 0");
+        if (size <= 0) throw new IllegalArgumentException();
         this.size = size;
 
         intersections = new Intersection[size][size];
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
+        for (int r = 0; r < size; r++)
+            for (int c = 0; c < size; c++)
                 intersections[r][c] = new Intersection(r, c);
-            }
-        }
     }
 
-    /**
-     * @return board size
-     */
+    /* ======================================================
+       BASIC ACCESS
+       ====================================================== */
+
     public int getSize() {
         return size;
     }
 
-    /**
-     * Returns the intersection at given coordinates.
-     *
-     * @param row row index
-     * @param col column index
-     * @return intersection or null if out of bounds
-     */
-    public Intersection getIntersection(int row, int col) {
-        if (row < 0 || row >= size || col < 0 || col >= size) return null;
-        return intersections[row][col];
+    public Intersection getIntersection(int r, int c) {
+        if (r < 0 || c < 0 || r >= size || c >= size) return null;
+        return intersections[r][c];
     }
 
-    /**
-     * Public method used by GameController.
-     * Currently delegates to simplified placement logic.
-     *
-     * @return number of captured stones, or -1 if move is illegal
-     */
+    /* ======================================================
+       MOVE LOGIC
+       ====================================================== */
+
     public int placeStone(int row, int col, Stone stone) {
-        return placeSimple(row, col, stone);
-    }
-
-    /**
-     * Simplified Go rules implementation:
-     * - places a stone
-     * - captures adjacent enemy stones
-     * - prevents suicide
-     * - ko rule
-     *
-     * @return number of captured stones, or -1 if move is illegal
-     */
-    public int placeSimple(int row, int col, Stone stone) {
         Intersection it = getIntersection(row, col);
         if (it == null || !it.isEmpty()) return -1;
 
-        Stone.Color[][] beforeMove = copyBoardState();
-
+        Stone.Color[][] before = copyBoardState();
         it.setStone(stone);
 
         int captured = 0;
-        int[][] dirs = {
-                {1, 0}, {-1, 0}, {0, 1}, {0, -1}
-        };
+        int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
 
         for (int[] d : dirs) {
             Intersection n = getIntersection(row + d[0], col + d[1]);
-            if (n == null || n.isEmpty()) continue;
-
-            if (n.getStone().getColor() != stone.getColor()) {
+            if (n != null && !n.isEmpty()
+                    && n.getStone().getColor() != stone.getColor()) {
                 if (removeGroupIfDead(n.getRow(), n.getCol())) {
                     captured++;
                 }
             }
         }
 
+        // suicide
         if (countGroupLiberties(row, col) == 0 && captured == 0) {
             it.setStone(null);
             return -1;
         }
 
-        Stone.Color[][] afterMove = copyBoardState();
-        if (isSameAsPrevious(afterMove)) {
-            restoreBoard(beforeMove);
+        // ko
+        Stone.Color[][] after = copyBoardState();
+        if (isSameAsPrevious(after)) {
+            restoreBoard(before);
             return -1;
         }
 
-        previousPosition = beforeMove;
-
+        previousPosition = before;
         return captured;
     }
 
+    /* ======================================================
+       GROUP & LIBERTIES
+       ====================================================== */
 
-    /**
-     * Counts liberties (empty adjacent intersections)
-     *
-     * @return number of liberties
-     */
-    public int countGroupLiberties(int row, int col) {
+    private int countGroupLiberties(int row, int col) {
         Intersection start = getIntersection(row, col);
         if (start == null || start.isEmpty()) return 0;
 
         boolean[][] visited = new boolean[size][size];
         List<Intersection> group = new ArrayList<>();
-
         collectGroup(row, col, start.getStone().getColor(), visited, group);
 
-        int liberties = 0;
-        boolean[][] counted = new boolean[size][size];
-
-        int[][] dirs = {
-                {1, 0}, {-1, 0}, {0, 1}, {0, -1}
-        };
+        Set<String> liberties = new HashSet<>();
+        int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
 
         for (Intersection it : group) {
             for (int[] d : dirs) {
                 int r = it.getRow() + d[0];
                 int c = it.getCol() + d[1];
-
                 Intersection n = getIntersection(r, c);
-                if (n != null && n.isEmpty() && !counted[r][c]) {
-                    liberties++;
-                    counted[r][c] = true; // nie liczymy tego samego oddechu 2 razy
+                if (n != null && n.isEmpty()) {
+                    liberties.add(r + "," + c);
                 }
             }
         }
-
-        return liberties;
+        return liberties.size();
     }
 
+    private boolean removeGroupIfDead(int row, int col) {
+        if (countGroupLiberties(row, col) > 0) return false;
 
-    /**
-     * Removes a stone if it has no liberties.
-     * Only works for single stones (no group handling).
-     *
-     * @return true if stone was removed
-     */
-    public boolean removeGroupIfDead(int row, int col) {
         Intersection start = getIntersection(row, col);
-        if (start == null || start.isEmpty()) return false;
-
-        int liberties = countGroupLiberties(row, col);
-        if (liberties > 0) return false;
-
         boolean[][] visited = new boolean[size][size];
         List<Intersection> group = new ArrayList<>();
-
         collectGroup(row, col, start.getStone().getColor(), visited, group);
 
         for (Intersection it : group) {
             it.setStone(null);
         }
-
         return true;
     }
 
-    /**
-     * Collects all stones belonging to the same connected group (chain).
-     *
-     * A group in Go is defined as stones of the same color
-     * connected orthogonally (up, down, left, right).
-     *
-     * This method performs a depth-first search (DFS) starting
-     * from the given position and gathers all connected stones
-     * of the same color into the provided list.
-     *
-     * @param row     starting row
-     * @param col     starting column
-     * @param color   color of the group being collected
-     * @param visited helper array preventing infinite recursion
-     * @param group   list where all stones of the group are stored
-     */
+    private void collectGroup(int r, int c, Stone.Color color,
+                              boolean[][] visited, List<Intersection> group) {
+        Intersection it = getIntersection(r, c);
+        if (it == null || it.isEmpty()
+                || visited[r][c]
+                || it.getStone().getColor() != color) return;
 
-    private void collectGroup(int row, int col, Stone.Color color, boolean[][] visited, List<Intersection> group) {
-        Intersection it = getIntersection(row, col);
-        if (it == null || it.isEmpty()) return;
-        if (it.getStone().getColor() != color) return;
-        if (visited[row][col]) return;
-
-        visited[row][col] = true;
+        visited[r][c] = true;
         group.add(it);
 
-        int[][] dirs = {
-                {1, 0}, {-1, 0}, {0, 1}, {0, -1}
-        };
-
-        for (int[] d : dirs) {
-            collectGroup(row + d[0], col + d[1], color, visited, group);
-        }
+        collectGroup(r+1, c, color, visited, group);
+        collectGroup(r-1, c, color, visited, group);
+        collectGroup(r, c+1, color, visited, group);
+        collectGroup(r, c-1, color, visited, group);
     }
 
+    /* ======================================================
+       JAPANESE SCORING
+       ====================================================== */
+
     /**
-     * Creates a copy of the current board state.
-     *
-     * Each intersection on the board is represented by the color of the stone:
-     * - BLACK / WHITE if occupied
-     * - null if empty
-     *
-     * This copy is useful for:
-     * 1. Checking the Ko rule (whether a move would return the board to a previous state)
-     * 2. Undoing moves in case they are illegal
-     *
-     * @return a 2D array of Stone.Color representing the current board state
+     * Prisoners = marked dead stones of the opponent.
      */
-    private Stone.Color[][] copyBoardState() {
-        Stone.Color[][] copy = new Stone.Color[size][size];
-        for (int r = 0; r < size; r++) {
+    public int countStones(Stone.Color color) {
+        int prisoners = 0;
+
+        for (int r = 0; r < size; r++)
             for (int c = 0; c < size; c++) {
                 Intersection it = intersections[r][c];
-                copy[r][c] = it.isEmpty() ? null : it.getStone().getColor();
+                if (!it.isEmpty()
+                        && it.isMarkedDead()
+                        && it.getStone().getColor() != color) {
+                    prisoners++;
+                }
             }
-        }
-        return copy;
+        return prisoners;
     }
 
     /**
-     * Checks whether the given board state is identical to a previously stored state.
+     * Territory counting based on empty-point groups.
      *
-     * This is primarily used to enforce the Ko rule in Go:
-     * - Players are not allowed to make a move that would recreate the exact
-     *   board position from the previous turn.
+     * Empty intersections are treated like stones of a third color.
+     * They form groups and have liberties.
      *
-     * @return true if the current state is exactly the same as the previous state, false otherwise
+     * If all liberties of an empty group belong to exactly one color,
+     * the entire group is territory of that color.
+     *
+     * If liberties belong to both colors, the group is neutral.
      */
-    private boolean isSameAsPrevious(Stone.Color[][] state) {
-        if (previousPosition == null) return false;
+    public int countTerritory(Stone.Color color) {
+        boolean[][] visited = new boolean[size][size];
+        int territory = 0;
 
         for (int r = 0; r < size; r++) {
             for (int c = 0; c < size; c++) {
-                if (previousPosition[r][c] != state[r][c]) {
-                    return false;
+
+                if (visited[r][c]) continue;
+                Intersection start = intersections[r][c];
+                if (!start.isEmpty()) continue;
+
+                List<Intersection> region = new ArrayList<>();
+                Set<Stone.Color> liberties = new HashSet<>();
+
+                collectEmptyGroup(r, c, visited, region, liberties);
+
+                if (liberties.size() == 1 && liberties.contains(color)) {
+                    territory += region.size();
                 }
             }
         }
+        return territory;
+    }
+
+    /**
+     * Flood fill for empty-point groups.
+     *
+     * Empty points are visited exactly once.
+     * Stones are NOT marked as visited – they only define liberties.
+     * Board edges do NOT count as liberties.
+     */
+    private void collectEmptyGroup(
+            int r, int c,
+            boolean[][] visited,
+            List<Intersection> region,
+            Set<Stone.Color> liberties) {
+
+        if (r < 0 || c < 0 || r >= size || c >= size) return;
+
+        Intersection it = intersections[r][c];
+
+        // Stone: defines a liberty, but does NOT stop exploration elsewhere
+        if (!it.isEmpty()) {
+            liberties.add(it.getStone().getColor());
+            return;
+        }
+
+        // Empty point already processed
+        if (visited[r][c]) return;
+
+        visited[r][c] = true;
+        region.add(it);
+
+        collectEmptyGroup(r + 1, c, visited, region, liberties);
+        collectEmptyGroup(r - 1, c, visited, region, liberties);
+        collectEmptyGroup(r, c + 1, visited, region, liberties);
+        collectEmptyGroup(r, c - 1, visited, region, liberties);
+    }
+
+
+    /* ======================================================
+       UTIL
+       ====================================================== */
+
+    private Stone.Color[][] copyBoardState() {
+        Stone.Color[][] s = new Stone.Color[size][size];
+        for (int r = 0; r < size; r++)
+            for (int c = 0; c < size; c++)
+                s[r][c] = intersections[r][c].isEmpty()
+                        ? null
+                        : intersections[r][c].getStone().getColor();
+        return s;
+    }
+
+    private boolean isSameAsPrevious(Stone.Color[][] s) {
+        if (previousPosition == null) return false;
+        for (int r = 0; r < size; r++)
+            for (int c = 0; c < size; c++)
+                if (previousPosition[r][c] != s[r][c]) return false;
         return true;
     }
 
-    /**
-     * Restores the board to a previously saved state.
-     *
-     * This is useful in several scenarios:
-     * - Undoing an illegal move (e.g., a suicide move)
-     * - Reverting the board to a previous state to enforce the Ko rule
-     * - Resetting the board after testing hypothetical moves
-     *
-     */
-    private void restoreBoard(Stone.Color[][] state) {
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                if (state[r][c] == null) {
-                    intersections[r][c].setStone(null);
-                } else {
-                    intersections[r][c].setStone(new Stone(state[r][c]));
-                }
-            }
-        }
+    private void restoreBoard(Stone.Color[][] s) {
+        for (int r = 0; r < size; r++)
+            for (int c = 0; c < size; c++)
+                intersections[r][c].setStone(
+                        s[r][c] == null ? null : new Stone(s[r][c]));
     }
-
 }

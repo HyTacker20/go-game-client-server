@@ -54,7 +54,7 @@ public class StartGameHandler implements MessageHandler {
         
         GameController gameController = new GameController(
             board, new SimpleMoveValidator(), 
-            blackPlayer, whitePlayer, blackPlayer);
+            blackPlayer, whitePlayer);
         
         context.setGameController(gameController);
         context.setGameActive(true);

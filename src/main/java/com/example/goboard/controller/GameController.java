@@ -2,63 +2,46 @@ package com.example.goboard.controller;
 
 import com.example.goboard.controller.state.GameState;
 import com.example.goboard.controller.state.PlayingState;
+import com.example.goboard.controller.state.ScoringState;
 import com.example.goboard.model.Board;
 import com.example.goboard.model.Player;
 import com.example.goboard.model.Stone;
 import com.example.goboard.strategy.MoveValidator;
+import com.example.goboard.view.GameUI;
 
 /**
  * GameController is the central coordinator of the Go game.
  *
- * It uses the State pattern to delegate game behavior
- * (playing, passing, game over) to dedicated state objects.
- *
- * Thanks to this approach:
- * - game logic is separated from state management
- * - adding new game phases is easy (e.g. scoring phase)
- * - conditional logic (if/else) is minimized
+ * Responsibilities:
+ * - Holds references to core game components (Board, Players, MoveValidator)
+ * - Delegates game actions to the current GameState
+ * - Manages state transitions (Playing → Scoring → GameOver)
  */
 public class GameController {
 
-    /** Game board model */
     private final Board board;
-
-    /** Strategy responsible for validating moves */
     private final MoveValidator validator;
-
-    /** Black player instance */
     private final Player blackPlayer;
-
-    /** White player instance */
     private final Player whitePlayer;
 
-    /**
-     * Current game state.
-     * All actions (play, pass, game over checks) are delegated to this object.
-     */
     private GameState currentState;
 
     /**
-     * Full constructor allowing explicit configuration of both players
-     * and the starting player.
-     *
-     * This constructor is useful for network games or advanced setups.
+     * Constructor with explicit black and white players.
+     * Always starts with black as the first player.
      */
     public GameController(Board board,
                           MoveValidator validator,
                           Player black,
-                          Player white,
-                          Player starting) {
-
+                          Player white) {
         this.board = board;
         this.validator = validator;
         this.blackPlayer = black;
         this.whitePlayer = white;
 
-        // Determine which player starts the game
-        Player startingPlayer = starting != null ? starting : black;
+        // Starting player is black by default
+        Player startingPlayer = black;
 
-        // Initial state of the game is always PlayingState
         this.currentState = new PlayingState(
                 this,
                 board,
@@ -72,24 +55,20 @@ public class GameController {
 
     /**
      * Simplified constructor for local games.
-     *
-     * Only one player needs to be provided;
-     * the second one is created automatically with the opposite color.
+     * Creates the missing player automatically.
      */
     public GameController(Board board, MoveValidator validator, Player starting) {
         this.board = board;
         this.validator = validator;
 
-        // Assign players based on the starting player's color
-        this.blackPlayer = starting.getColor() == Stone.Color.BLACK
-                ? starting
-                : new Player("Black", Stone.Color.BLACK);
+        if (starting.getColor() == Stone.Color.BLACK) {
+            this.blackPlayer = starting;
+            this.whitePlayer = new Player("White", Stone.Color.WHITE);
+        } else {
+            this.whitePlayer = starting;
+            this.blackPlayer = new Player("Black", Stone.Color.BLACK);
+        }
 
-        this.whitePlayer = starting.getColor() == Stone.Color.WHITE
-                ? starting
-                : new Player("White", Stone.Color.WHITE);
-
-        // Game starts in PlayingState
         this.currentState = new PlayingState(
                 this,
                 board,
@@ -101,57 +80,55 @@ public class GameController {
         );
     }
 
-    /**
-     * Attempts to place a stone on the board.
-     *
-     * The actual behavior depends on the current game state.
-     *
-     * @return true if the move was legal and executed
-     */
+    /** Attempts to play a move via the current GameState */
     public boolean play(int row, int col) {
         return currentState.play(row, col);
     }
 
-    /**
-     * Current player passes their turn.
-     *
-     * Two consecutive passes typically end the game.
-     *
-     * @return true if the game ended as a result of this pass
-     */
+    /** Current player passes their turn */
     public boolean pass() {
         return currentState.pass();
     }
 
-    /**
-     * Returns the player whose turn it currently is.
-     */
+    /** Returns the player whose turn it currently is */
     public Player getCurrentPlayer() {
         return currentState.getCurrentPlayer();
     }
 
-    /**
-     * Indicates whether the game has ended.
-     */
+    /** Returns true if the game is over */
     public boolean isGameOver() {
         return currentState.isGameOver();
     }
 
-    /**
-     * Returns the number of consecutive passes.
-     * This information is maintained by the active state.
-     */
+    /** Returns the number of consecutive passes */
     public int getConsecutivePasses() {
         return currentState.getConsecutivePasses();
     }
 
-    /**
-     * Changes the current game state.
-     *
-     * This method is called internally by state objects
-     * to transition between phases (e.g. Playing → GameOver).
-     */
+    /** Sets the current game state (used by state objects) */
     public void setState(GameState state) {
         this.currentState = state;
     }
+
+    /** Returns the current game state (for UI or logic) */
+    public GameState getState() {
+        return currentState;
+    }
+
+    /** Returns true if the game is currently in scoring phase */
+    public boolean isScoringPhase() {
+        return currentState instanceof ScoringState;
+    }
+
+    /** Delegates scoring handling to the ScoringState */
+    public void handleScoring(GameUI ui) {
+        if (currentState instanceof ScoringState scoringState) {
+            scoringState.handleScoring(ui);
+        }
+    }
+
+    /** Getters for players and board */
+    public Player getBlackPlayer() { return blackPlayer; }
+    public Player getWhitePlayer() { return whitePlayer; }
+    public Board getBoard() { return board; }
 }
