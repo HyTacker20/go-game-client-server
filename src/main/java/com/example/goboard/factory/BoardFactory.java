@@ -28,12 +28,32 @@ public class BoardFactory {
     }
 
     /**
+     * Creates a standard 19x19 board with custom komi.
+     */
+    public static Board standard19(double komi) {
+        return new BoardBuilder()
+                .size(19)
+                .komi(komi)
+                .build();
+    }
+
+    /**
      * Creates a smaller 9x9 board.
      * Useful for beginners, testing, or quick games.
      */
     public static Board small9() {
         return new BoardBuilder()
                 .size(9)
+                .build();
+    }
+
+    /**
+     * Creates a 9x9 board with custom komi.
+     */
+    public static Board small9(double komi) {
+        return new BoardBuilder()
+                .size(9)
+                .komi(komi)
                 .build();
     }
 
@@ -46,6 +66,16 @@ public class BoardFactory {
     public static Board custom(int size) {
         return new BoardBuilder()
                 .size(size)
+                .build();
+    }
+
+    /**
+     * Creates a board with custom size and komi.
+     */
+    public static Board custom(int size, double komi) {
+        return new BoardBuilder()
+                .size(size)
+                .komi(komi)
                 .build();
     }
 }

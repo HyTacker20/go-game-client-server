@@ -183,6 +183,12 @@ public class JavaFXGameClient extends Application {
         capturedLabel = new Label("Captured:\nBlack: 0\nWhite: 0");
         capturedLabel.setFont(Font.font("Arial", 12));
         
+        // Komi information
+        Label komiLabel = new Label("Komi: " + board.getKomi() + "\n(White compensation)");
+        komiLabel.setFont(Font.font("Arial", 11));
+        komiLabel.setStyle("-fx-text-fill: #0066cc;");
+        komiLabel.setWrapText(true);
+        
         Separator sep4 = new Separator();
         
         // Action buttons
@@ -204,6 +210,7 @@ public class JavaFXGameClient extends Application {
             statusLabel,
             sep3,
             capturedLabel,
+            komiLabel,
             sep4,
             passButton,
             resignButton

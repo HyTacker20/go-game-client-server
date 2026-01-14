@@ -28,14 +28,28 @@ public class Board {
     private int blackPrisoners = 0;
     private int whitePrisoners = 0;
 
+    // Komi: compensation points for white (typically 6.5 or 7.5)
+    private final double komi;
+
+    // Position history for superko detection
+    private final List<String> positionHistory = new ArrayList<>();
+
     public Board(int size) {
+        this(size, 6.5); // Default komi of 6.5
+    }
+
+    public Board(int size, double komi) {
         if (size <= 0) throw new IllegalArgumentException();
         this.size = size;
+        this.komi = komi;
 
         intersections = new Intersection[size][size];
         for (int r = 0; r < size; r++)
             for (int c = 0; c < size; c++)
                 intersections[r][c] = new Intersection(r, c);
+
+        // Record initial empty board position
+        positionHistory.add(boardToString());
     }
 
     /* ======================================================
@@ -44,6 +58,10 @@ public class Board {
 
     public int getSize() {
         return size;
+    }
+
+    public double getKomi() {
+        return komi;
     }
 
     public Intersection getIntersection(int r, int c) {
@@ -102,14 +120,16 @@ public class Board {
             return -1;
         }
 
-        // ko
-        Stone.Color[][] after = copyBoardState();
-        if (isSameAsPrevious(after)) {
+        // superko - check against entire position history
+        String currentPosition = boardToString();
+        if (positionHistory.contains(currentPosition)) {
             restoreBoard(before);
             return -1;
         }
 
+        // Valid move - add to history
         previousPosition = before;
+        positionHistory.add(currentPosition);
         return capturedThisMove;
     }
 
@@ -206,6 +226,8 @@ public class Board {
      * the entire group is territory of that color.
      *
      * If liberties belong to both colors, the group is neutral.
+     *
+     * Note: Seki regions are excluded from territory.
      */
     public int countTerritory(Stone.Color color) {
         boolean[][] visited = new boolean[size][size];
@@ -216,6 +238,9 @@ public class Board {
 
                 Intersection start = intersections[r][c];
                 if (!start.isEmpty() || visited[r][c]) continue;
+
+                // Skip seki regions
+                if (start.isInSeki()) continue;
 
                 List<Intersection> region = new ArrayList<>();
                 Set<Stone.Color> liberties = new HashSet<>();
@@ -228,6 +253,24 @@ public class Board {
             }
         }
         return territory;
+    }
+
+    /**
+     * Calculate final score for a color, including komi.
+     * For white: territory - black_prisoners + komi
+     * For black: territory - white_prisoners
+     */
+    public double calculateScore(Stone.Color color) {
+        double score = countTerritory(color) - countStones(
+            color == Stone.Color.BLACK ? Stone.Color.WHITE : Stone.Color.BLACK
+        );
+
+        // Add komi for white
+        if (color == Stone.Color.WHITE) {
+            score += komi;
+        }
+
+        return score;
     }
 
     /**
@@ -291,5 +334,168 @@ public class Board {
             for (int c = 0; c < size; c++)
                 intersections[r][c].setStone(
                         s[r][c] == null ? null : new Stone(s[r][c]));
+    }
+
+    /**
+     * Converts current board position to a string for superko detection.
+     * Format: each intersection is represented by B (black), W (white), or . (empty)
+     */
+    private String boardToString() {
+        StringBuilder sb = new StringBuilder();
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                Intersection it = intersections[r][c];
+                if (it.isEmpty()) {
+                    sb.append('.');
+                } else if (it.getStone().getColor() == Stone.Color.BLACK) {
+                    sb.append('B');
+                } else {
+                    sb.append('W');
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    /* ======================================================
+       SEKI DETECTION
+       ====================================================== */
+
+    /**
+     * Detect and mark seki regions on the board.
+     *
+     * Seki occurs when two groups share liberties and neither can capture
+     * the other without being captured themselves.
+     *
+     * Algorithm:
+     * 1. Find all groups with exactly 1 or 2 liberties
+     * 2. Check if opposing groups share the same liberties
+     * 3. If they share liberties and both would die if they play, it's seki
+     */
+    public void detectSeki() {
+        // Clear previous seki marks
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                intersections[r][c].setInSeki(false);
+            }
+        }
+
+        boolean[][] visited = new boolean[size][size];
+
+        // Find all groups and check for seki
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                if (visited[r][c] || intersections[r][c].isEmpty()) continue;
+
+                List<Intersection> group = new ArrayList<>();
+                Stone.Color color = intersections[r][c].getStone().getColor();
+                collectGroup(r, c, color, visited, group);
+
+                int libertyCount = countGroupLiberties(r, c);
+
+                // Potential seki: group has 1-3 liberties
+                if (libertyCount >= 1 && libertyCount <= 3) {
+                    if (isGroupInSeki(group, color)) {
+                        markGroupAsSeki(group);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if a group is in seki by analyzing shared liberties with opponent.
+     */
+    private boolean isGroupInSeki(List<Intersection> group, Stone.Color color) {
+        Set<Intersection> liberties = getGroupLiberties(group);
+        if (liberties.isEmpty()) return false;
+
+        Stone.Color opponentColor = (color == Stone.Color.BLACK) 
+            ? Stone.Color.WHITE : Stone.Color.BLACK;
+
+        // Check each liberty's neighbors for opponent groups
+        for (Intersection liberty : liberties) {
+            int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+
+            for (int[] d : dirs) {
+                Intersection neighbor = getIntersection(
+                    liberty.getRow() + d[0], 
+                    liberty.getCol() + d[1]
+                );
+
+                if (neighbor != null && !neighbor.isEmpty() 
+                    && neighbor.getStone().getColor() == opponentColor) {
+
+                    // Found opponent group - check if it also has few liberties
+                    int opponentLiberties = countGroupLiberties(
+                        neighbor.getRow(), neighbor.getCol()
+                    );
+
+                    // Both groups have limited liberties and share space
+                    if (opponentLiberties >= 1 && opponentLiberties <= 3) {
+                        Set<Intersection> opponentLibs = getGroupLiberties(
+                            getGroupAtPosition(neighbor.getRow(), neighbor.getCol())
+                        );
+
+                        // Check if they share liberties
+                        Set<Intersection> shared = new HashSet<>(liberties);
+                        shared.retainAll(opponentLibs);
+
+                        if (!shared.isEmpty()) {
+                            return true; // Likely seki
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get all liberties of a group.
+     */
+    private Set<Intersection> getGroupLiberties(List<Intersection> group) {
+        Set<Intersection> liberties = new HashSet<>();
+        int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+
+        for (Intersection it : group) {
+            for (int[] d : dirs) {
+                Intersection neighbor = getIntersection(
+                    it.getRow() + d[0], it.getCol() + d[1]
+                );
+                if (neighbor != null && neighbor.isEmpty()) {
+                    liberties.add(neighbor);
+                }
+            }
+        }
+        return liberties;
+    }
+
+    /**
+     * Get group at a specific position.
+     */
+    private List<Intersection> getGroupAtPosition(int row, int col) {
+        Intersection start = getIntersection(row, col);
+        if (start == null || start.isEmpty()) return new ArrayList<>();
+
+        boolean[][] visited = new boolean[size][size];
+        List<Intersection> group = new ArrayList<>();
+        collectGroup(row, col, start.getStone().getColor(), visited, group);
+        return group;
+    }
+
+    /**
+     * Mark all intersections in a group as being in seki.
+     */
+    private void markGroupAsSeki(List<Intersection> group) {
+        for (Intersection it : group) {
+            it.setInSeki(true);
+        }
+
+        // Also mark the shared liberties as seki
+        Set<Intersection> liberties = getGroupLiberties(group);
+        for (Intersection liberty : liberties) {
+            liberty.setInSeki(true);
+        }
     }
 }

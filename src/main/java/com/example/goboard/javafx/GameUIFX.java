@@ -175,14 +175,24 @@ public class GameUIFX implements GameUI {
     }
     
     @Override
-    public void displayScore(int blackScore, int whiteScore) {
+    public void displayScore(double blackScore, double whiteScore) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Score");
             alert.setHeaderText("Current Score");
+            
+            String winner;
+            if (blackScore > whiteScore) {
+                winner = String.format("\nBlack wins by %.1f points!", blackScore - whiteScore);
+            } else if (whiteScore > blackScore) {
+                winner = String.format("\nWhite wins by %.1f points!", whiteScore - blackScore);
+            } else {
+                winner = "\nDraw!";
+            }
+            
             alert.setContentText(String.format(
-                "Black: %d\nWhite: %d\n\nDifference: %d", 
-                blackScore, whiteScore, Math.abs(blackScore - whiteScore)
+                "Black: %.1f\nWhite: %.1f%s", 
+                blackScore, whiteScore, winner
             ));
             alert.showAndWait();
         });

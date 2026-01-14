@@ -24,6 +24,9 @@ public class Intersection {
     /** Whether this intersection is marked as dead during scoring */
     private boolean markedDead;
 
+    /** Whether this intersection is part of a seki (mutual life) */
+    private boolean inSeki;
+
     /**
      * Creates a new intersection at given coordinates.
      *
@@ -35,6 +38,7 @@ public class Intersection {
         this.col = col;
         this.stone = null;
         this.markedDead = false;
+        this.inSeki = false;
     }
 
     /** @return row index of this intersection */
@@ -87,6 +91,22 @@ public class Intersection {
      */
     public void toggleDeadMarker() {
         this.markedDead = !this.markedDead;
+    }
+
+    /**
+     * @return true if this intersection is in seki (mutual life)
+     */
+    public boolean isInSeki() {
+        return inSeki;
+    }
+
+    /**
+     * Marks or unmarks this intersection as being in seki.
+     *
+     * @param seki true if in seki, false otherwise
+     */
+    public void setInSeki(boolean seki) {
+        this.inSeki = seki;
     }
 
     /* =====================================================

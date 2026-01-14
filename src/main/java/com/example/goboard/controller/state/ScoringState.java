@@ -128,16 +128,17 @@ public class ScoringState extends AbstractGameState {
         removeDeadStones();
 
         /* =====================================================
-           SCORE CALCULATION
-           territory + prisoners
+           SEKI DETECTION
+           Detect and mark seki regions before scoring
            ===================================================== */
-        int blackScore =
-                board.countTerritory(Stone.Color.BLACK)
-                        - board.countStones(Stone.Color.WHITE);
+        board.detectSeki();
 
-        int whiteScore =
-                board.countTerritory(Stone.Color.WHITE)
-                        - board.countStones(Stone.Color.BLACK);
+        /* =====================================================
+           SCORE CALCULATION
+           territory + prisoners + komi (for white)
+           ===================================================== */
+        double blackScore = board.calculateScore(Stone.Color.BLACK);
+        double whiteScore = board.calculateScore(Stone.Color.WHITE);
 
         ui.displayScore(blackScore, whiteScore);
 

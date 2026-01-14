@@ -22,6 +22,9 @@ public class ConsoleGameUI implements GameUI {
         ConsoleUIFormatter.clearScreen();
         String boardString = renderer.render(board);
         ConsoleUIFormatter.printBoardWithFrame(boardString);
+        
+        // Display game info including komi
+        System.out.println("\nKomi: " + board.getKomi() + " (compensation for White)");
     }
 
     /**
@@ -96,10 +99,18 @@ public class ConsoleGameUI implements GameUI {
      * Display final score.
      */
     @Override
-    public void displayScore(int blackScore, int whiteScore) {
+    public void displayScore(double blackScore, double whiteScore) {
         ConsoleUIFormatter.printHeader("Final Score");
-        System.out.println("Black: " + blackScore);
-        System.out.println("White: " + whiteScore);
+        System.out.printf("Black: %.1f%n", blackScore);
+        System.out.printf("White: %.1f%n", whiteScore);
+        
+        if (blackScore > whiteScore) {
+            System.out.println("Black wins by " + String.format("%.1f", blackScore - whiteScore) + " points!");
+        } else if (whiteScore > blackScore) {
+            System.out.println("White wins by " + String.format("%.1f", whiteScore - blackScore) + " points!");
+        } else {
+            System.out.println("Draw!");
+        }
     }
 
     /**

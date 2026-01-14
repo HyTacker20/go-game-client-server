@@ -29,14 +29,28 @@ public class AsciiBoardRenderer implements BoardRenderer {
             for (int c = 0; c < n; c++) {
                 Intersection it = board.getIntersection(r, c);
                 if (it.isEmpty()) {
-                    sb.append(" ."); // Dot for empty intersection
+                    // Show seki regions with 's'
+                    if (it.isInSeki()) {
+                        sb.append(" s");
+                    } else {
+                        sb.append(" ."); // Dot for empty intersection
+                    }
                 } else {
                     Stone stone = it.getStone();
+                    char symbol;
                     if (stone.getColor() == Stone.Color.BLACK) {
-                        sb.append(" X"); // X for black stone
+                        symbol = 'X'; // X for black stone
                     } else {
-                        sb.append(" O"); // O for white stone
+                        symbol = 'O'; // O for white stone
                     }
+                    
+                    // Mark dead stones with lowercase
+                    if (it.isMarkedDead()) {
+                        symbol = Character.toLowerCase(symbol);
+                    }
+                    // Mark seki stones (show normally but they're in seki)
+                    
+                    sb.append(" ").append(symbol);
                 }
             }
             sb.append('\n');

@@ -220,15 +220,22 @@ public class BoardView extends Canvas {
                     double x = MARGIN + col * cellSize;
                     double y = MARGIN + row * cellSize;
                     
-                    boolean isDead = deadStones.contains(row + "," + col);
-                    drawStone(gc, x, y, radius, stone.getColor(), isDead);
+                    boolean isDead = deadStones.contains(row + "," + col) || inter.isMarkedDead();
+                    boolean isSeki = inter.isInSeki();
+                    drawStone(gc, x, y, radius, stone.getColor(), isDead, isSeki);
+                } else if (inter != null && inter.isInSeki()) {
+                    // Mark empty seki points
+                    double x = MARGIN + col * cellSize;
+                    double y = MARGIN + row * cellSize;
+                    gc.setFill(Color.rgb(100, 150, 255, 0.3));
+                    gc.fillOval(x - radius * 0.3, y - radius * 0.3, radius * 0.6, radius * 0.6);
                 }
             }
         }
     }
     
     private void drawStone(GraphicsContext gc, double x, double y, double radius, 
-                          Stone.Color color, boolean isDead) {
+                          Stone.Color color, boolean isDead, boolean isSeki) {
         // Draw shadow
         gc.setFill(Color.rgb(0, 0, 0, 0.3));
         gc.fillOval(x - radius + 2, y - radius + 2, radius * 2, radius * 2);
@@ -257,7 +264,14 @@ public class BoardView extends Canvas {
         gc.setLineWidth(1.0);
         gc.strokeOval(x - radius, y - radius, radius * 2, radius * 2);
         
-        // Mark dead stones with X
+        // Mark seki stones with blue circle
+        if (isSeki && !isDead) {
+            gc.setStroke(Color.rgb(0, 100, 255));
+            gc.setLineWidth(2.5);
+            gc.strokeOval(x - radius * 0.7, y - radius * 0.7, radius * 1.4, radius * 1.4);
+        }
+        
+        // Mark dead stones with X (takes priority over seki)
         if (isDead) {
             gc.setStroke(Color.RED);
             gc.setLineWidth(2.0);
