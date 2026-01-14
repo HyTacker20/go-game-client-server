@@ -51,6 +51,20 @@ public class Board {
         return intersections[r][c];
     }
 
+    /**
+     * Get the number of white stones captured by black.
+     */
+    public int getBlackPrisoners() {
+        return blackPrisoners;
+    }
+
+    /**
+     * Get the number of black stones captured by white.
+     */
+    public int getWhitePrisoners() {
+        return whitePrisoners;
+    }
+
     /* ======================================================
        MOVE LOGIC
        ====================================================== */

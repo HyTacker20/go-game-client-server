@@ -155,16 +155,30 @@ public abstract class GameMessage implements Serializable {
     public static class BoardStateMessage extends GameMessage {
         private int[][] boardState;
         private String message;
+        private int blackCaptured;
+        private int whiteCaptured;
 
         public BoardStateMessage(MessageType type, int[][] boardState) {
             super(type);
             this.boardState = boardState;
+            this.blackCaptured = 0;
+            this.whiteCaptured = 0;
         }
 
         public BoardStateMessage(MessageType type, int[][] boardState, String message) {
             super(type);
             this.boardState = boardState;
             this.message = message;
+            this.blackCaptured = 0;
+            this.whiteCaptured = 0;
+        }
+
+        public BoardStateMessage(MessageType type, int[][] boardState, String message, int blackCaptured, int whiteCaptured) {
+            super(type);
+            this.boardState = boardState;
+            this.message = message;
+            this.blackCaptured = blackCaptured;
+            this.whiteCaptured = whiteCaptured;
         }
 
         public int[][] getBoardState() {
@@ -183,9 +197,25 @@ public abstract class GameMessage implements Serializable {
             this.message = message;
         }
 
+        public int getBlackCaptured() {
+            return blackCaptured;
+        }
+
+        public void setBlackCaptured(int blackCaptured) {
+            this.blackCaptured = blackCaptured;
+        }
+
+        public int getWhiteCaptured() {
+            return whiteCaptured;
+        }
+
+        public void setWhiteCaptured(int whiteCaptured) {
+            this.whiteCaptured = whiteCaptured;
+        }
+
         @Override
         public String toString() {
-            return "BoardStateMessage{type=" + getType() + ", message='" + message + "'}";
+            return "BoardStateMessage{type=" + getType() + ", message='" + message + "', blackCaptured=" + blackCaptured + ", whiteCaptured=" + whiteCaptured + "}";
         }
     }
 
@@ -196,12 +226,25 @@ public abstract class GameMessage implements Serializable {
         private boolean success;
         private String message;
         private int[][] boardState;
+        private int blackCaptured;
+        private int whiteCaptured;
 
         public MoveResponseMessage(boolean success, String message, int[][] boardState) {
             super(MessageType.MOVE_RESPONSE);
             this.success = success;
             this.message = message;
             this.boardState = boardState;
+            this.blackCaptured = 0;
+            this.whiteCaptured = 0;
+        }
+
+        public MoveResponseMessage(boolean success, String message, int[][] boardState, int blackCaptured, int whiteCaptured) {
+            super(MessageType.MOVE_RESPONSE);
+            this.success = success;
+            this.message = message;
+            this.boardState = boardState;
+            this.blackCaptured = blackCaptured;
+            this.whiteCaptured = whiteCaptured;
         }
 
         public boolean isSuccess() {
@@ -228,9 +271,25 @@ public abstract class GameMessage implements Serializable {
             this.boardState = boardState;
         }
 
+        public int getBlackCaptured() {
+            return blackCaptured;
+        }
+
+        public void setBlackCaptured(int blackCaptured) {
+            this.blackCaptured = blackCaptured;
+        }
+
+        public int getWhiteCaptured() {
+            return whiteCaptured;
+        }
+
+        public void setWhiteCaptured(int whiteCaptured) {
+            this.whiteCaptured = whiteCaptured;
+        }
+
         @Override
         public String toString() {
-            return "MoveResponseMessage{success=" + success + ", message='" + message + "'}";
+            return "MoveResponseMessage{success=" + success + ", message='" + message + "', blackCaptured=" + blackCaptured + ", whiteCaptured=" + whiteCaptured + "}";
         }
     }
 
@@ -242,6 +301,8 @@ public abstract class GameMessage implements Serializable {
         private int col;
         private String message;
         private int[][] boardState;
+        private int blackCaptured;
+        private int whiteCaptured;
 
         public OpponentMoveMessage(int row, int col, String message, int[][] boardState) {
             super(MessageType.OPPONENT_MOVE);
@@ -249,6 +310,18 @@ public abstract class GameMessage implements Serializable {
             this.col = col;
             this.message = message;
             this.boardState = boardState;
+            this.blackCaptured = 0;
+            this.whiteCaptured = 0;
+        }
+
+        public OpponentMoveMessage(int row, int col, String message, int[][] boardState, int blackCaptured, int whiteCaptured) {
+            super(MessageType.OPPONENT_MOVE);
+            this.row = row;
+            this.col = col;
+            this.message = message;
+            this.boardState = boardState;
+            this.blackCaptured = blackCaptured;
+            this.whiteCaptured = whiteCaptured;
         }
 
         public int getRow() {
@@ -267,9 +340,25 @@ public abstract class GameMessage implements Serializable {
             return boardState;
         }
 
+        public int getBlackCaptured() {
+            return blackCaptured;
+        }
+
+        public void setBlackCaptured(int blackCaptured) {
+            this.blackCaptured = blackCaptured;
+        }
+
+        public int getWhiteCaptured() {
+            return whiteCaptured;
+        }
+
+        public void setWhiteCaptured(int whiteCaptured) {
+            this.whiteCaptured = whiteCaptured;
+        }
+
         @Override
         public String toString() {
-            return "OpponentMoveMessage{row=" + row + ", col=" + col + ", message='" + message + "'}";
+            return "OpponentMoveMessage{row=" + row + ", col=" + col + ", message='" + message + "', blackCaptured=" + blackCaptured + ", whiteCaptured=" + whiteCaptured + "}";
         }
     }
 }

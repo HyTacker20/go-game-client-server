@@ -21,17 +21,24 @@ public class PassHandler implements MessageHandler {
         System.out.println("[GAME] ○ " + context.getPlayerName() + " passed their turn");
         
         int[][] boardState = context.serializeBoard(context.getBoard());
+        int blackCaptured = context.getBoard().getBlackPrisoners();
+        int whiteCaptured = context.getBoard().getWhitePrisoners();
+        
         GameMessage response = new GameMessage.MoveResponseMessage(
             true,
             "You passed",
-            boardState);
+            boardState,
+            blackCaptured,
+            whiteCaptured);
         context.sendMessage(response);
         
         // Notify opponent
         GameMessage opponentMsg = new GameMessage.BoardStateMessage(
             GameMessage.MessageType.OPPONENT_PASS,
             boardState,
-            "Opponent passed");
+            "Opponent passed",
+            blackCaptured,
+            whiteCaptured);
         context.getOpponent().sendMessage(opponentMsg);
     }
 }
