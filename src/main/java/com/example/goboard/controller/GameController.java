@@ -63,10 +63,10 @@ public class GameController {
 
         if (starting.getColor() == Stone.Color.BLACK) {
             this.blackPlayer = starting;
-            this.whitePlayer = new Player("White", Stone.Color.WHITE);
+            this.whitePlayer = Player.defaultWhite();
         } else {
             this.whitePlayer = starting;
-            this.blackPlayer = new Player("Black", Stone.Color.BLACK);
+            this.blackPlayer = Player.defaultBlack();
         }
 
         this.currentState = new PlayingState(

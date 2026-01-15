@@ -77,22 +77,15 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    /**
+     * Serialize the board to a 2D integer array.
+     * Delegates to Board's toIntArray() method.
+     * 
+     * @param board the board to serialize
+     * @return 2D array (0=empty, 1=black, 2=white)
+     */
     public int[][] serializeBoard(Board board) {
-        int size = board.getSize();
-        int[][] state = new int[size][size];
-        
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                Intersection inter = board.getIntersection(r, c);
-                if (inter.isEmpty()) {
-                    state[r][c] = 0;  // Empty
-                } else {
-                    Stone stone = inter.getStone();
-                    state[r][c] = stone.getColor() == Stone.Color.BLACK ? 1 : 2;
-                }
-            }
-        }
-        return state;
+        return board.toIntArray();
     }
 
     public void sendMessage(GameMessage message) {

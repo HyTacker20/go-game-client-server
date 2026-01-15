@@ -20,8 +20,8 @@ public class ConsoleGame {
 
         this.board = BoardFactory.small9();
 
-        Player black = new Player("Black", Stone.Color.BLACK);
-        Player white = new Player("White", Stone.Color.WHITE);
+        Player black = Player.defaultBlack();
+        Player white = Player.defaultWhite();
 
         this.controller = new GameController(
                 board,

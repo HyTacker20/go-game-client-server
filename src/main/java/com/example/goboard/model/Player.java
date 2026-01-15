@@ -29,6 +29,24 @@ public class Player {
         this.color = color;
     }
 
+    /**
+     * Factory method for creating a default black player.
+     * 
+     * @return Player with name "Black" and BLACK color
+     */
+    public static Player defaultBlack() {
+        return new Player("Black", Stone.Color.BLACK);
+    }
+
+    /**
+     * Factory method for creating a default white player.
+     * 
+     * @return Player with name "White" and WHITE color
+     */
+    public static Player defaultWhite() {
+        return new Player("White", Stone.Color.WHITE);
+    }
+
     /** @return player's display name */
     public String getName() {
         return name;
