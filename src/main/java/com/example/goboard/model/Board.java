@@ -83,6 +83,14 @@ public class Board {
         return whitePrisoners;
     }
 
+    public void incrementBlackPrisoners(int delta) {
+        blackPrisoners += delta;
+    }
+
+    public void incrementWhitePrisoners(int delta) {
+        whitePrisoners += delta;
+    }
+
     /* ======================================================
        MOVE LOGIC
        ====================================================== */

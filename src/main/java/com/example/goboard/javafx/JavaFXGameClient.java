@@ -64,9 +64,13 @@ public class JavaFXGameClient extends Application {
     private TextArea messageArea;
     private Button passButton;
     private Button resignButton;
+    private Button submitDeadButton;
     
     // Input queue for synchronizing UI thread with network thread
     private BlockingQueue<String> inputQueue = new LinkedBlockingQueue<>();
+
+    // Scoring state
+    private boolean scoringPhase = false;
     
     @Override
     public void start(Stage primaryStage) {
@@ -201,6 +205,11 @@ public class JavaFXGameClient extends Application {
         resignButton.setPrefWidth(200);
         resignButton.setDisable(true);
         resignButton.setOnAction(e -> handleResign());
+
+        submitDeadButton = new Button("Submit Dead Stones");
+        submitDeadButton.setPrefWidth(200);
+        submitDeadButton.setDisable(true);
+        submitDeadButton.setOnAction(e -> handleSubmitDeadStones());
         
         panel.getChildren().addAll(
             titleLabel,
@@ -213,7 +222,8 @@ public class JavaFXGameClient extends Application {
             komiLabel,
             sep4,
             passButton,
-            resignButton
+            resignButton,
+            submitDeadButton
         );
         
         return panel;
@@ -296,8 +306,28 @@ public class JavaFXGameClient extends Application {
                     statusLabel.setText(msg);
                 }
                 break;
+
+            case SCORING_PHASE:
+                scoringPhase = true;
+                myTurn = false;
+                passButton.setDisable(true);
+                resignButton.setDisable(true);
+                submitDeadButton.setDisable(false);
+                statusLabel.setText("Scoring phase: mark dead stones and submit");
+                appendMessage("Scoring phase started. Mark dead stones and press Submit.");
+                if (message instanceof GameMessage.BoardStateMessage) {
+                    GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
+                    updateBoardState(stateMsg);
+                    updateCapturedFromMessage(stateMsg.getBlackCaptured(), stateMsg.getWhiteCaptured());
+                }
+                boardView.clearDeadStones();
+                boardView.setScoringMode(true);
+                break;
                 
             case YOUR_TURN:
+                scoringPhase = false;
+                submitDeadButton.setDisable(true);
+                boardView.setScoringMode(false);
                 myTurn = true;
                 turnLabel.setText("YOUR TURN");
                 turnLabel.setTextFill(Color.GREEN);
@@ -313,6 +343,9 @@ public class JavaFXGameClient extends Application {
                 break;
                 
             case OPPONENT_TURN:
+                scoringPhase = false;
+                submitDeadButton.setDisable(true);
+                boardView.setScoringMode(false);
                 myTurn = false;
                 turnLabel.setText("Opponent's Turn");
                 turnLabel.setTextFill(Color.ORANGE);
@@ -398,6 +431,16 @@ public class JavaFXGameClient extends Application {
                 passButton.setDisable(true);
                 resignButton.setDisable(true);
                 myTurn = false;
+                scoringPhase = false;
+                submitDeadButton.setDisable(true);
+                boardView.setScoringMode(false);
+                break;
+            
+            case SCORE_RESPONSE:
+                if (message instanceof GameMessage.ScoreMessage) {
+                    GameMessage.ScoreMessage scoreMsg = (GameMessage.ScoreMessage) message;
+                    handleScoringPhase(scoreMsg);
+                }
                 break;
                 
             case ERROR:
@@ -461,7 +504,67 @@ public class JavaFXGameClient extends Application {
                                            blackCaptured, whiteCaptured));
     }
     
+    private void handleScoringPhase(GameMessage.ScoreMessage scoreMsg) {
+        scoringPhase = true;
+        // Disable normal game controls during scoring
+        passButton.setDisable(true);
+        resignButton.setDisable(true);
+        submitDeadButton.setDisable(true);
+        myTurn = false;
+        
+        // Update board state if provided
+        if (scoreMsg.getBoardState() != null) {
+            updateBoardState(scoreMsg.getBoardState());
+        }
+        
+        boardView.setScoringMode(true);
+        
+        double blackScore = scoreMsg.getBlackScore();
+        double whiteScore = scoreMsg.getWhiteScore();
+        
+        appendMessage("Scoring Phase Started");
+        appendMessage("Score: " + scoreMsg.getBlackPlayerName() + " = " + blackScore + 
+                     ", " + scoreMsg.getWhitePlayerName() + " = " + whiteScore);
+        
+        // Show dialog asking for score confirmation
+        Alert scoreDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        scoreDialog.setTitle("Score Confirmation");
+        scoreDialog.setHeaderText("Game Scoring");
+        scoreDialog.setContentText(
+            scoreMsg.getBlackPlayerName() + " (Black): " + blackScore + " points\n" +
+            scoreMsg.getWhitePlayerName() + " (White): " + whiteScore + " points\n\n" +
+            "Do you accept this score?");
+        
+        scoreDialog.getButtonTypes().setAll(
+            new ButtonType("Accept", ButtonBar.ButtonData.YES),
+            new ButtonType("Reject", ButtonBar.ButtonData.NO)
+        );
+        
+        Optional<ButtonType> result = scoreDialog.showAndWait();
+        
+        boolean accepted = result.isPresent() && result.get().getButtonData() == ButtonBar.ButtonData.YES;
+        
+        // Send confirmation to server
+        GameMessage confirmMsg = new GameMessage.ScoreConfirmationMessage(accepted);
+        sendMessage(confirmMsg);
+        
+        boardView.setScoringMode(false);
+        scoringPhase = false;
+        
+        if (accepted) {
+            appendMessage("You accepted the score. Waiting for opponent...");
+            statusLabel.setText("Waiting for opponent to confirm score...");
+        } else {
+            appendMessage("You rejected the score. Game continues...");
+        }
+    }
+    
     private void handleIntersectionClick(int row, int col) {
+        if (scoringPhase) {
+            boardView.toggleDeadStone(row, col);
+            return;
+        }
+
         if (!myTurn) {
             appendMessage("Wait for your turn!");
             return;
@@ -484,6 +587,39 @@ public class JavaFXGameClient extends Application {
         // Don't set myTurn = false yet, in case the move is rejected
         passButton.setDisable(true);
         resignButton.setDisable(true);
+    }
+
+    /**
+     * Submit marked dead stones to server during scoring phase.
+     */
+    private void handleSubmitDeadStones() {
+        if (!scoringPhase) {
+            return;
+        }
+
+        var dead = boardView.getDeadStones();
+        int[][] coords = new int[dead.size()][2];
+        int i = 0;
+        for (String s : dead) {
+            String[] parts = s.split(",");
+            if (parts.length == 2) {
+                coords[i][0] = Integer.parseInt(parts[0]);
+                coords[i][1] = Integer.parseInt(parts[1]);
+                i++;
+            }
+        }
+        if (i < coords.length) {
+            int[][] trimmed = new int[i][2];
+            System.arraycopy(coords, 0, trimmed, 0, i);
+            coords = trimmed;
+        }
+
+        GameMessage deadMsg = new GameMessage.DeadStonesMessage(coords);
+        sendMessage(deadMsg);
+
+        statusLabel.setText("Dead stones submitted. Waiting for score...");
+        appendMessage("Submitted dead stones: " + coords.length);
+        submitDeadButton.setDisable(true);
     }
     
     private void handlePass() {

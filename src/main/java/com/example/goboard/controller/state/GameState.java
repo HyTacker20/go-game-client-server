@@ -1,6 +1,7 @@
 package com.example.goboard.controller.state;
 
 import com.example.goboard.model.Player;
+import com.example.goboard.strategy.MoveValidator;
 
 /**
  * State pattern interface for managing different game phases.
@@ -44,4 +45,11 @@ public interface GameState {
      * @return consecutive pass count
      */
     int getConsecutivePasses();
+    
+    /**
+     * Get the move validator for this state.
+     * 
+     * @return MoveValidator instance
+     */
+    MoveValidator getValidator();
 }

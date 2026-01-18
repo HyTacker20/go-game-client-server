@@ -18,6 +18,14 @@ public class MoveHandler implements MessageHandler {
             context.sendMessage(response);
             return;
         }
+
+        if (context.getGameController().isScoringInProgress()) {
+            GameMessage response = new GameMessage.TextMessage(
+                GameMessage.MessageType.ERROR,
+                "Scoring in progress. Wait until scoring is resolved.");
+            context.sendMessage(response);
+            return;
+        }
         
         GameMessage.MoveMessage moveMsg = (GameMessage.MoveMessage) message;
         int row = moveMsg.getRow();

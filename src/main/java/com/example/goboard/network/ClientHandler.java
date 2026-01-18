@@ -42,6 +42,8 @@ public class ClientHandler implements Runnable {
         handlers.put(GameMessage.MessageType.MOVE, new MoveHandler());
         handlers.put(GameMessage.MessageType.PASS, new PassHandler());
         handlers.put(GameMessage.MessageType.RESIGN, new ResignHandler());
+        handlers.put(GameMessage.MessageType.SCORE_CONFIRMATION, new ScoreConfirmationHandler());
+        handlers.put(GameMessage.MessageType.DEAD_STONES, new DeadStonesHandler());
         
         try {
             out = new ObjectOutputStream(socket.getOutputStream());

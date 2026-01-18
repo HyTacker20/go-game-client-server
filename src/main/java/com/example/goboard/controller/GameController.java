@@ -8,6 +8,8 @@ import com.example.goboard.model.Player;
 import com.example.goboard.model.Stone;
 import com.example.goboard.strategy.MoveValidator;
 import com.example.goboard.view.GameUI;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * GameController is the central coordinator of the Go game.
@@ -23,6 +25,15 @@ public class GameController {
     private final MoveValidator validator;
     private final Player blackPlayer;
     private final Player whitePlayer;
+
+    /** True while a scoring negotiation is in progress. */
+    private boolean scoringInProgress = false;
+    /** Score confirmations for the current scoring phase. */
+    private boolean blackScoreConfirmed = false;
+    private boolean whiteScoreConfirmed = false;
+
+    /** Stones removed during scoring (for potential restoration). */
+    private final List<RemovedStone> removedDuringScoring = new ArrayList<>();
 
     private GameState currentState;
 
@@ -131,4 +142,68 @@ public class GameController {
     public Player getBlackPlayer() { return blackPlayer; }
     public Player getWhitePlayer() { return whitePlayer; }
     public Board getBoard() { return board; }
+
+    /** Scoring lifecycle helpers */
+    public synchronized void startScoringPhase() {
+        scoringInProgress = true;
+        blackScoreConfirmed = false;
+        whiteScoreConfirmed = false;
+        System.out.println("[GAME] Scoring phase flag set: scoringInProgress=true");
+    }
+
+    public synchronized void endScoringPhase() {
+        scoringInProgress = false;
+        blackScoreConfirmed = false;
+        whiteScoreConfirmed = false;
+        System.out.println("[GAME] Scoring phase flag cleared: scoringInProgress=false");
+    }
+
+    public synchronized boolean isScoringInProgress() {
+        return scoringInProgress;
+    }
+
+    public synchronized void markScoreConfirmed(Stone.Color color) {
+        if (color == Stone.Color.BLACK) {
+            blackScoreConfirmed = true;
+        } else {
+            whiteScoreConfirmed = true;
+        }
+    }
+
+    public synchronized void resetScoreConfirmations() {
+        blackScoreConfirmed = false;
+        whiteScoreConfirmed = false;
+    }
+
+    public synchronized boolean bothScoresConfirmed() {
+        return blackScoreConfirmed && whiteScoreConfirmed;
+    }
+
+    /** Scoring helpers */
+    public void clearRemovedDuringScoring() {
+        removedDuringScoring.clear();
+    }
+
+    public void addRemovedDuringScoring(int row, int col, Stone.Color color) {
+        removedDuringScoring.add(new RemovedStone(row, col, color));
+    }
+
+    public void restoreRemovedDuringScoring() {
+        for (RemovedStone rs : removedDuringScoring) {
+            board.getIntersection(rs.row, rs.col).setStone(new Stone(rs.color));
+        }
+        removedDuringScoring.clear();
+    }
+
+    private static class RemovedStone {
+        final int row;
+        final int col;
+        final Stone.Color color;
+
+        RemovedStone(int row, int col, Stone.Color color) {
+            this.row = row;
+            this.col = col;
+            this.color = color;
+        }
+    }
 }
