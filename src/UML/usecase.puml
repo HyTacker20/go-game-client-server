@@ -1,0 +1,48 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Gracz" as Player
+actor "Serwer Gry" as Server
+
+rectangle "Gra Go" {
+
+    Player --> (Rozpocznij grę)
+    Player --> (Wykonaj ruch)
+    Player --> (Zakończ grę)
+    Player --> (Zobacz wynik)
+    Player --> (Wyświetl planszę)
+
+    (Wykonaj ruch) --> (Sprawdź poprawność ruchu) : <<include>>
+    (Wykonaj ruch) --> (Zaktualizuj planszę) : <<include>>
+    (Zaktualizuj planszę) --> (Zbij kamienie) : <<include>>
+
+    (Zakończ grę) --> (Policz punkty) : <<include>>
+    (Zobacz wynik) --> (Policz punkty) : <<include>>
+
+    (Gra w konsoli) ..> (Wyświetl planszę) : <<extend>>
+    (Gra w JavaFX) ..> (Wyświetl planszę) : <<extend>>
+}
+
+rectangle "Tryby UI" {
+    (Gra w konsoli)
+    (Gra w JavaFX)
+}
+
+Player --> (Gra w konsoli)
+Player --> (Gra w JavaFX)
+
+rectangle "Komunikacja sieciowa" {
+    (Połącz z serwerem)
+    (Wyślij ruch)
+    (Odbierz stan gry)
+}
+
+Player --> (Połącz z serwerem)
+(Wykonaj ruch) --> (Wyślij ruch)
+(Odbierz stan gry) --> (Zaktualizuj planszę)
+
+Server --> (Odbierz stan gry)
+Server --> (Wyślij ruch)
+
+@enduml

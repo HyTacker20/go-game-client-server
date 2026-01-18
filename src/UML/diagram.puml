@@ -1,0 +1,128 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+' ===== builder =====
+package builder {
+    class BoardBuilder
+}
+
+' ===== factory =====
+package factory {
+    class BoardFactory
+}
+
+' ===== model =====
+package model {
+    class Board
+    class Intersection
+    class Stone
+    class Player
+    class CaptureEngine
+    class RuleEnforcer
+    class ScoreCalculator
+    class SekiDetector
+}
+
+' ===== strategy =====
+package strategy {
+    interface MoveValidator
+    class SimpleMoveValidator
+}
+
+MoveValidator <|.. SimpleMoveValidator
+
+' ===== controller =====
+package controller {
+    class GameController
+
+    package state {
+        interface GameState
+        abstract class AbstractGameState
+        class PlayingState
+        class ScoringState
+        class GameOverState
+    }
+}
+
+GameState <|.. AbstractGameState
+AbstractGameState <|-- PlayingState
+AbstractGameState <|-- ScoringState
+AbstractGameState <|-- GameOverState
+
+GameController --> GameState
+
+' ===== view =====
+package view {
+    interface BoardRenderer
+    class AsciiBoardRenderer
+
+    interface GameUI
+    class ConsoleGameUI
+    class ConsoleUIFormatter
+    class UIFactory
+}
+
+BoardRenderer <|.. AsciiBoardRenderer
+GameUI <|.. ConsoleGameUI
+
+ConsoleGameUI --> BoardRenderer
+ConsoleGameUI --> ConsoleUIFormatter
+UIFactory --> GameUI
+
+' ===== console =====
+package console {
+    class ConsoleGame
+}
+
+ConsoleGame --> GameController
+ConsoleGame --> GameUI
+
+' ===== javafx =====
+package javafx {
+    class BoardView
+    class GameUIFX
+    class JavaFXGameClient
+}
+
+GameUIFX --> BoardView
+JavaFXGameClient --> GameUIFX
+JavaFXGameClient --> GameController
+
+' ===== network =====
+package network {
+    class GameClient
+    class GameServer
+    class GameMessage
+
+    package handler {
+        class ClientHandler
+    }
+}
+
+GameClient --> GameMessage
+GameServer --> ClientHandler
+ClientHandler --> GameMessage
+
+' ===== main =====
+class App
+
+App --> ConsoleGame
+App --> JavaFXGameClient
+
+' ===== dependencies model =====
+GameController --> Board
+GameController --> Player
+GameController --> MoveValidator
+GameController --> RuleEnforcer
+GameController --> CaptureEngine
+GameController --> ScoreCalculator
+
+Board --> Intersection
+Board --> Stone
+CaptureEngine --> Board
+RuleEnforcer --> Board
+ScoreCalculator --> Board
+SekiDetector --> Board
+
+@enduml
