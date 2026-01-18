@@ -25,7 +25,7 @@ public class ClientHandler implements Runnable {
     private Player player;
     private boolean available = false;
     private boolean gameActive = false;
-    
+
     // Message handlers for different message types
     private final Map<GameMessage.MessageType, MessageHandler> handlers;
     private final MessageHandlerContext handlerContext;
@@ -35,7 +35,7 @@ public class ClientHandler implements Runnable {
         this.server = server;
         this.handlerContext = new MessageHandlerContext(this, server);
         this.handlers = new HashMap<>();
-        
+
         // Register message handlers
         handlers.put(GameMessage.MessageType.JOIN_GAME, new JoinGameHandler());
         handlers.put(GameMessage.MessageType.START_GAME, new StartGameHandler());
@@ -44,7 +44,6 @@ public class ClientHandler implements Runnable {
         handlers.put(GameMessage.MessageType.RESIGN, new ResignHandler());
         handlers.put(GameMessage.MessageType.SCORE_CONFIRMATION, new ScoreConfirmationHandler());
         handlers.put(GameMessage.MessageType.DEAD_STONES, new DeadStonesHandler());
-        
         try {
             out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
@@ -82,7 +81,7 @@ public class ClientHandler implements Runnable {
     /**
      * Serialize the board to a 2D integer array.
      * Delegates to Board's toIntArray() method.
-     * 
+     *
      * @param board the board to serialize
      * @return 2D array (0=empty, 1=black, 2=white)
      */
@@ -109,16 +108,16 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             System.err.println("Error closing socket: " + e.getMessage());
         }
-        
+
         if (playerName != null) {
             server.unregisterClient(playerName);
             server.removeHandler(this);
         }
-        
+
         if (opponent != null && gameActive) {
             GameMessage gameOverMsg = new GameMessage.TextMessage(
-                GameMessage.MessageType.GAME_OVER,
-                "Opponent disconnected");
+                    GameMessage.MessageType.GAME_OVER,
+                    "Opponent disconnected");
             opponent.sendMessage(gameOverMsg);
         }
     }
@@ -147,7 +146,7 @@ public class ClientHandler implements Runnable {
     public ClientHandler getOpponent() {
         return opponent;
     }
-    
+
     public void setOpponent(ClientHandler opponent) {
         this.opponent = opponent;
     }
@@ -155,11 +154,11 @@ public class ClientHandler implements Runnable {
     public GameController getGameController() {
         return gameController;
     }
-    
+
     public void setGameController(GameController gameController) {
         this.gameController = gameController;
     }
-    
+
     public Board getBoard() {
         return board;
     }
@@ -171,7 +170,7 @@ public class ClientHandler implements Runnable {
     public Player getPlayer() {
         return player;
     }
-    
+
     public void setPlayer(Player player) {
         this.playerName = player.getName();
         this.player = player;
@@ -180,7 +179,7 @@ public class ClientHandler implements Runnable {
     public void initiateGameStart(String opponentName) {
         MessageHandler handler = handlers.get(GameMessage.MessageType.START_GAME);
         GameMessage message = new GameMessage.TextMessage(
-            GameMessage.MessageType.START_GAME, opponentName);
+                GameMessage.MessageType.START_GAME, opponentName);
         handler.handle(handlerContext, message);
     }
 
