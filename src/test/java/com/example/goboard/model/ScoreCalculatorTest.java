@@ -1,9 +1,8 @@
 package com.example.goboard.model;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class ScoreCalculatorTest {
 
@@ -12,8 +11,8 @@ class ScoreCalculatorTest {
 
     @BeforeEach
     void setUp() {
-        board = new Board(5, 6.5); // small 5x5 board with komi
-        calculator = new ScoreCalculator(board, 6.5);
+        board = new Board(5); // small 5x5 board
+        calculator = new ScoreCalculator(board);
 
         // Fill the entire board with WHITE stones as baseline
         for (int r = 0; r < 5; r++) {
@@ -83,10 +82,10 @@ class ScoreCalculatorTest {
     }
 
     /* ======================================================
-       SCORE TEST WITH KOMI
+       SCORE TEST
        ====================================================== */
     @Test
-    void testCalculateScoreWithKomi() {
+    void testCalculateScore() {
         // Empty intersection at (2,2) for BLACK territory
         board.getIntersection(2,2).setStone(null);
 
@@ -111,7 +110,7 @@ class ScoreCalculatorTest {
         );
 
         assertEquals(1, blackScore, "Black score = 1 territory, no prisoners");
-        assertEquals(6.5, whiteScore, "White score = komi 6.5, no territory or prisoners");
+        assertEquals(0, whiteScore, "White score = no territory or prisoners");
     }
 
     /* ======================================================

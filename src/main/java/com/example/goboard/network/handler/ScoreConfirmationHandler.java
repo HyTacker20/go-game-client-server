@@ -1,10 +1,10 @@
 package com.example.goboard.network.handler;
 
-import com.example.goboard.network.GameMessage;
 import com.example.goboard.controller.state.GameOverState;
 import com.example.goboard.controller.state.PlayingState;
-import com.example.goboard.model.Stone;
 import com.example.goboard.model.Player;
+import com.example.goboard.model.Stone;
+import com.example.goboard.network.GameMessage;
 
 /**
  * Handles score confirmation/rejection from players during scoring phase.
@@ -50,7 +50,6 @@ public class ScoreConfirmationHandler implements MessageHandler {
             // Score rejected - resume game
             System.out.println("[GAME] Score rejected by " + playerName + ". Returning to normal play.");
             resumeGame(context);
-            notifyOpponentScoreRejected(context);
             return;
         }
         
@@ -63,7 +62,7 @@ public class ScoreConfirmationHandler implements MessageHandler {
             if (context.getGameController().bothScoresConfirmed()) {
                 System.out.println("[GAME] Both players accepted the score. Game over!");
                 endGame(context);
-                context.getGameController().endScoringPhase();
+                // DO NOT call endScoringPhase here - it will be called during game state transition
                 return;
             }
         }
@@ -145,10 +144,22 @@ public class ScoreConfirmationHandler implements MessageHandler {
             2  // 2 consecutive passes led to scoring
         ));
         context.getGameController().clearRemovedDuringScoring();
+        context.getGameController().endScoringPhase();
         
         // Calculate winner
         double blackScore = context.getBoard().calculateScore(Stone.Color.BLACK);
         double whiteScore = context.getBoard().calculateScore(Stone.Color.WHITE);
+        
+        // Debug logging
+        int blackTerritory = context.getBoard().countTerritory(Stone.Color.BLACK);
+        int whiteTerritory = context.getBoard().countTerritory(Stone.Color.WHITE);
+        int blackPrisoners = context.getBoard().getBlackPrisoners();
+        int whitePrisoners = context.getBoard().getWhitePrisoners();
+        
+        System.out.println("[SCORE DEBUG]");
+        System.out.println("  Black Territory: " + blackTerritory + ", Prisoners: " + blackPrisoners + ", Score: " + blackScore);
+        System.out.println("  White Territory: " + whiteTerritory + ", Prisoners: " + whitePrisoners + ", Score: " + whiteScore);
+        System.out.println("  Total territory accounted: " + (blackTerritory + whiteTerritory));
         
         String result;
         if (blackScore > whiteScore) {
@@ -170,14 +181,5 @@ public class ScoreConfirmationHandler implements MessageHandler {
         context.sendMessage(gameOverMsg);
         context.getOpponent().sendMessage(gameOverMsg);
     }
-    
-    /**
-     * Notify opponent that we rejected the score.
-     */
-    private void notifyOpponentScoreRejected(MessageHandlerContext context) {
-        GameMessage opponentMsg = new GameMessage.TextMessage(
-            GameMessage.MessageType.YOUR_TURN,
-            context.getPlayerName() + " rejected the score. Returning to normal play. Your turn.");
-        context.getOpponent().sendMessage(opponentMsg);
-    }
 }
+

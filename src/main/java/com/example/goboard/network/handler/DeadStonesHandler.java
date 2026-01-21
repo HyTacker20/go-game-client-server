@@ -51,13 +51,7 @@ public class DeadStonesHandler implements MessageHandler {
             if (it != null && !it.isEmpty()) {
                 Stone.Color color = it.getStone().getColor();
                 context.getGameController().addRemovedDuringScoring(r, c, color);
-                it.setStone(null); // remove
-                // Prisoners: removed stones count for opponent
-                if (color == Stone.Color.BLACK) {
-                    context.getBoard().incrementWhitePrisoners(1);
-                } else {
-                    context.getBoard().incrementBlackPrisoners(1);
-                }
+                it.setStone(null); // remove - do NOT add to prisoners, just remove
             }
         }
 

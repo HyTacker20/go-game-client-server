@@ -1,27 +1,41 @@
 package com.example.goboard.javafx;
 
-import com.example.goboard.model.Board;
-import com.example.goboard.model.Intersection;
-import com.example.goboard.model.Stone;
-import com.example.goboard.network.GameClient;
-import com.example.goboard.network.GameMessage;
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.stage.Stage;
-
-import java.io.*;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import com.example.goboard.model.Board;
+import com.example.goboard.model.Intersection;
+import com.example.goboard.model.Stone;
+import com.example.goboard.network.GameMessage;
+
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
 
 /**
  * JavaFX application for the Go game client.
@@ -61,6 +75,7 @@ public class JavaFXGameClient extends Application {
     private Label turnLabel;
     private Label capturedLabel;
     private Label connectionLabel;
+    private Label playerColorLabel;
     private TextArea messageArea;
     private Button passButton;
     private Button resignButton;
@@ -71,6 +86,7 @@ public class JavaFXGameClient extends Application {
 
     // Scoring state
     private boolean scoringPhase = false;
+    private Alert activeScoreDialog = null;
     
     @Override
     public void start(Stage primaryStage) {
@@ -169,6 +185,11 @@ public class JavaFXGameClient extends Application {
         connectionLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
         connectionLabel.setTextFill(Color.RED);
         
+        // Player color indicator
+        playerColorLabel = new Label("Color: Not assigned");
+        playerColorLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        playerColorLabel.setTextFill(Color.GRAY);
+        
         Separator sep1 = new Separator();
         
         // Turn indicator
@@ -187,12 +208,7 @@ public class JavaFXGameClient extends Application {
         capturedLabel = new Label("Captured:\nBlack: 0\nWhite: 0");
         capturedLabel.setFont(Font.font("Arial", 12));
         
-        // Komi information
-        Label komiLabel = new Label("Komi: " + board.getKomi() + "\n(White compensation)");
-        komiLabel.setFont(Font.font("Arial", 11));
-        komiLabel.setStyle("-fx-text-fill: #0066cc;");
-        komiLabel.setWrapText(true);
-        
+
         Separator sep4 = new Separator();
         
         // Action buttons
@@ -214,12 +230,12 @@ public class JavaFXGameClient extends Application {
         panel.getChildren().addAll(
             titleLabel,
             connectionLabel,
+            playerColorLabel,
             sep1,
             turnLabel,
             statusLabel,
             sep3,
             capturedLabel,
-            komiLabel,
             sep4,
             passButton,
             resignButton,
@@ -325,9 +341,15 @@ public class JavaFXGameClient extends Application {
                 break;
                 
             case YOUR_TURN:
+                // Close score dialog if opponent rejected
+                if (activeScoreDialog != null) {
+                    activeScoreDialog.close();
+                    activeScoreDialog = null;
+                }
                 scoringPhase = false;
                 submitDeadButton.setDisable(true);
                 boardView.setScoringMode(false);
+                boardView.clearDeadStones();
                 myTurn = true;
                 turnLabel.setText("YOUR TURN");
                 turnLabel.setTextFill(Color.GREEN);
@@ -339,13 +361,20 @@ public class JavaFXGameClient extends Application {
                     GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
                     updateBoardState(stateMsg);
                     updateCapturedFromMessage(stateMsg.getBlackCaptured(), stateMsg.getWhiteCaptured());
+                    updatePlayerColorFromState(stateMsg);
                 }
                 break;
                 
             case OPPONENT_TURN:
+                // Close score dialog if opponent rejected
+                if (activeScoreDialog != null) {
+                    activeScoreDialog.close();
+                    activeScoreDialog = null;
+                }
                 scoringPhase = false;
                 submitDeadButton.setDisable(true);
                 boardView.setScoringMode(false);
+                boardView.clearDeadStones();
                 myTurn = false;
                 turnLabel.setText("Opponent's Turn");
                 turnLabel.setTextFill(Color.ORANGE);
@@ -357,6 +386,7 @@ public class JavaFXGameClient extends Application {
                     GameMessage.BoardStateMessage stateMsg = (GameMessage.BoardStateMessage) message;
                     updateBoardState(stateMsg);
                     updateCapturedFromMessage(stateMsg.getBlackCaptured(), stateMsg.getWhiteCaptured());
+                    updatePlayerColorFromState(stateMsg);
                 }
                 break;
                 
@@ -504,6 +534,20 @@ public class JavaFXGameClient extends Application {
                                            blackCaptured, whiteCaptured));
     }
     
+    private void updatePlayerColorFromState(GameMessage.BoardStateMessage stateMsg) {
+        if (playerColorLabel.getText().equals("Color: Not assigned")) {
+            // Determine color based on whether it's our turn at game start
+            // Black always plays first, so if it's our turn, we are BLACK
+            if (myTurn) {
+                playerColorLabel.setText("Color: BLACK");
+                playerColorLabel.setTextFill(Color.BLACK);
+            } else {
+                playerColorLabel.setText("Color: WHITE");
+                playerColorLabel.setTextFill(Color.DARKGRAY);
+            }
+        }
+    }
+    
     private void handleScoringPhase(GameMessage.ScoreMessage scoreMsg) {
         scoringPhase = true;
         // Disable normal game controls during scoring
@@ -526,8 +570,9 @@ public class JavaFXGameClient extends Application {
         appendMessage("Score: " + scoreMsg.getBlackPlayerName() + " = " + blackScore + 
                      ", " + scoreMsg.getWhitePlayerName() + " = " + whiteScore);
         
-        // Show dialog asking for score confirmation
+        // Show dialog asking for score confirmation (non-blocking)
         Alert scoreDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        activeScoreDialog = scoreDialog;
         scoreDialog.setTitle("Score Confirmation");
         scoreDialog.setHeaderText("Game Scoring");
         scoreDialog.setContentText(
@@ -540,23 +585,32 @@ public class JavaFXGameClient extends Application {
             new ButtonType("Reject", ButtonBar.ButtonData.NO)
         );
         
-        Optional<ButtonType> result = scoreDialog.showAndWait();
+        // Make dialog non-blocking to allow processing opponent's rejection
+        scoreDialog.setOnHidden(event -> {
+            activeScoreDialog = null;
+            ButtonType result = scoreDialog.getResult();
+            
+            // Only send confirmation if dialog was not forcibly closed
+            if (result != null && scoringPhase) {
+                boolean accepted = result.getButtonData() == ButtonBar.ButtonData.YES;
+                
+                // Send confirmation to server
+                GameMessage confirmMsg = new GameMessage.ScoreConfirmationMessage(accepted);
+                sendMessage(confirmMsg);
+                
+                boardView.setScoringMode(false);
+                scoringPhase = false;
+                
+                if (accepted) {
+                    appendMessage("You accepted the score. Waiting for opponent...");
+                    statusLabel.setText("Waiting for opponent to confirm score...");
+                } else {
+                    appendMessage("You rejected the score. Game continues...");
+                }
+            }
+        });
         
-        boolean accepted = result.isPresent() && result.get().getButtonData() == ButtonBar.ButtonData.YES;
-        
-        // Send confirmation to server
-        GameMessage confirmMsg = new GameMessage.ScoreConfirmationMessage(accepted);
-        sendMessage(confirmMsg);
-        
-        boardView.setScoringMode(false);
-        scoringPhase = false;
-        
-        if (accepted) {
-            appendMessage("You accepted the score. Waiting for opponent...");
-            statusLabel.setText("Waiting for opponent to confirm score...");
-        } else {
-            appendMessage("You rejected the score. Game continues...");
-        }
+        scoreDialog.show();
     }
     
     private void handleIntersectionClick(int row, int col) {

@@ -1,6 +1,9 @@
 package com.example.goboard.model;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Calculates scores and territory for Japanese Go rules.
@@ -8,7 +11,7 @@ import java.util.*;
  * Responsibilities:
  * - Count territory based on empty regions
  * - Count prisoners (captured stones + marked dead stones)
- * - Calculate final scores with komi
+ * - Calculate final scores
  */
 public class ScoreCalculator {
     
@@ -16,12 +19,10 @@ public class ScoreCalculator {
     
     private final Board board;
     private final int size;
-    private final double komi;
     
-    public ScoreCalculator(Board board, double komi) {
+    public ScoreCalculator(Board board) {
         this.board = board;
         this.size = board.getSize();
-        this.komi = komi;
     }
     
     /**
@@ -94,28 +95,24 @@ public class ScoreCalculator {
     }
     
     /**
-     * Calculate final score for a color, including komi.
-     * For white: territory - black_prisoners + komi
-     * For black: territory - white_prisoners
+     * Calculate final score for a color.
+     * Formula: territory + captured_opponent_stones
      * 
      * @param color the color to calculate score for
-     * @param blackPrisoners captured white stones
-     * @param whitePrisoners captured black stones
+     * @param blackPrisoners captured white stones (won by black)
+     * @param whitePrisoners captured black stones (won by white)
      * @return final score
      */
     public double calculateScore(Stone.Color color, int blackPrisoners, int whitePrisoners) {
-        double score = countTerritory(color) - countPrisoners(
-            color == Stone.Color.BLACK ? Stone.Color.WHITE : Stone.Color.BLACK,
-            blackPrisoners,
-            whitePrisoners
-        );
-
-        // Add komi for white
-        if (color == Stone.Color.WHITE) {
-            score += komi;
+        int territory = countTerritory(color);
+        
+        if (color == Stone.Color.BLACK) {
+            // Black score = black territory + white stones captured by black
+            return territory + blackPrisoners;
+        } else {
+            // White score = white territory + black stones captured by white
+            return territory + whitePrisoners;
         }
-
-        return score;
     }
     
     /**

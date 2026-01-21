@@ -77,7 +77,6 @@ public interface GameUI {
 
     /**
      * Display the currently calculated score.
-     * Supports fractional scores due to komi.
      */
     void displayScore(double blackScore, double whiteScore);
 

@@ -1,15 +1,15 @@
 package com.example.goboard.controller.state;
 
-import com.example.goboard.controller.GameController;
-import com.example.goboard.model.Board;
-import com.example.goboard.model.Player;
-import com.example.goboard.model.Stone;
-import com.example.goboard.model.Intersection;
-import com.example.goboard.strategy.MoveValidator;
-import com.example.goboard.view.GameUI;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import com.example.goboard.controller.GameController;
+import com.example.goboard.model.Board;
+import com.example.goboard.model.Intersection;
+import com.example.goboard.model.Player;
+import com.example.goboard.model.Stone;
+import com.example.goboard.strategy.MoveValidator;
+import com.example.goboard.view.GameUI;
 
 /**
  * Represents the SCORING PHASE of a Go game (Japanese rules).
@@ -135,7 +135,7 @@ public class ScoringState extends AbstractGameState {
 
         /* =====================================================
            SCORE CALCULATION
-           territory + prisoners + komi (for white)
+           territory + prisoners
            ===================================================== */
         double blackScore = board.calculateScore(Stone.Color.BLACK);
         double whiteScore = board.calculateScore(Stone.Color.WHITE);

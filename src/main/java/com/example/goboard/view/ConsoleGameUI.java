@@ -1,6 +1,7 @@
 package com.example.goboard.view;
 
 import java.util.Scanner;
+
 import com.example.goboard.model.Board;
 
 /**
@@ -22,9 +23,6 @@ public class ConsoleGameUI implements GameUI {
         ConsoleUIFormatter.clearScreen();
         String boardString = renderer.render(board);
         ConsoleUIFormatter.printBoardWithFrame(boardString);
-        
-        // Display game info including komi
-        System.out.println("\nKomi: " + board.getKomi() + " (compensation for White)");
     }
 
     /**

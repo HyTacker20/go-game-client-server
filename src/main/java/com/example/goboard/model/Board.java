@@ -19,7 +19,6 @@ public class Board {
 
     private final int size;
     private final Intersection[][] intersections;
-    private final double komi;
 
     // Prisoners captured during the game
     private int blackPrisoners = 0;
@@ -32,13 +31,8 @@ public class Board {
     private final SekiDetector sekiDetector;
 
     public Board(int size) {
-        this(size, 6.5); // Default komi of 6.5
-    }
-
-    public Board(int size, double komi) {
         if (size <= 0) throw new IllegalArgumentException();
         this.size = size;
-        this.komi = komi;
 
         intersections = new Intersection[size][size];
         for (int r = 0; r < size; r++)
@@ -47,7 +41,7 @@ public class Board {
 
         // Initialize delegate components
         this.captureEngine = new CaptureEngine(this);
-        this.scoreCalculator = new ScoreCalculator(this, komi);
+        this.scoreCalculator = new ScoreCalculator(this);
         this.ruleEnforcer = new RuleEnforcer(this);
         this.sekiDetector = new SekiDetector(this, captureEngine);
     }
@@ -58,10 +52,6 @@ public class Board {
 
     public int getSize() {
         return size;
-    }
-
-    public double getKomi() {
-        return komi;
     }
 
     public Intersection getIntersection(int r, int c) {
@@ -160,7 +150,7 @@ public class Board {
     }
 
     /**
-     * Calculate final score for a color, including komi (delegates to ScoreCalculator).
+     * Calculate final score for a color (delegates to ScoreCalculator).
      */
     public double calculateScore(Stone.Color color) {
         return scoreCalculator.calculateScore(color, blackPrisoners, whitePrisoners);
