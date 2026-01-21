@@ -9,7 +9,8 @@ rectangle "Gra Go" {
 
     Player --> (Rozpocznij grę)
     Player --> (Wykonaj ruch)
-    Player --> (Zakończ grę)
+    Player --> (Pasuj)
+    Player --> (Poddaj się)
     Player --> (Zobacz wynik)
     Player --> (Wyświetl planszę)
 
@@ -17,11 +18,21 @@ rectangle "Gra Go" {
     (Wykonaj ruch) --> (Zaktualizuj planszę) : <<include>>
     (Zaktualizuj planszę) --> (Zbij kamienie) : <<include>>
 
-    (Zakończ grę) --> (Policz punkty) : <<include>>
-    (Zobacz wynik) --> (Policz punkty) : <<include>>
+    (Rozpocznij grę) --> (Dołącz do gry) : <<include>>
+    (Rozpocznij grę) --> (Rozpocznij partię) : <<include>>
 
     (Gra w konsoli) ..> (Wyświetl planszę) : <<extend>>
     (Gra w JavaFX) ..> (Wyświetl planszę) : <<extend>>
+}
+
+rectangle "Faza punktacji" {
+    Player --> (Oznacz martwe kamienie)
+    Player --> (Potwierdź wynik)
+    
+    (Pasuj) --> (Przejdź do punktacji) : <<extend>>
+    (Oznacz martwe kamienie) --> (Policz punkty) : <<include>>
+    (Potwierdź wynik) --> (Zakończ grę) : <<include>>
+    (Zobacz wynik) --> (Policz punkty) : <<include>>
 }
 
 rectangle "Tryby UI" {
@@ -35,14 +46,28 @@ Player --> (Gra w JavaFX)
 rectangle "Komunikacja sieciowa" {
     (Połącz z serwerem)
     (Wyślij ruch)
+    (Wyślij pas)
+    (Wyślij poddanie)
+    (Wyślij martwe kamienie)
+    (Wyślij potwierdzenie wyniku)
     (Odbierz stan gry)
+    (Odbierz ruch przeciwnika)
+    (Odbierz fazę punktacji)
 }
 
 Player --> (Połącz z serwerem)
 (Wykonaj ruch) --> (Wyślij ruch)
+(Pasuj) --> (Wyślij pas)
+(Poddaj się) --> (Wyślij poddanie)
+(Oznacz martwe kamienie) --> (Wyślij martwe kamienie)
+(Potwierdź wynik) --> (Wyślij potwierdzenie wyniku)
 (Odbierz stan gry) --> (Zaktualizuj planszę)
+(Odbierz ruch przeciwnika) --> (Zaktualizuj planszę)
+(Odbierz fazę punktacji) --> (Oznacz martwe kamienie)
 
 Server --> (Odbierz stan gry)
 Server --> (Wyślij ruch)
+Server --> (Odbierz ruch przeciwnika)
+Server --> (Odbierz fazę punktacji)
 
 @enduml

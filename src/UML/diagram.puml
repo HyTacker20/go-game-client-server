@@ -97,12 +97,31 @@ package network {
 
     package handler {
         class ClientHandler
+        interface MessageHandler
+        class MessageHandlerContext
+        class DeadStonesHandler
+        class JoinGameHandler
+        class MoveHandler
+        class PassHandler
+        class ResignHandler
+        class ScoreConfirmationHandler
+        class StartGameHandler
     }
 }
+
+MessageHandler <|.. DeadStonesHandler
+MessageHandler <|.. JoinGameHandler
+MessageHandler <|.. MoveHandler
+MessageHandler <|.. PassHandler
+MessageHandler <|.. ResignHandler
+MessageHandler <|.. ScoreConfirmationHandler
+MessageHandler <|.. StartGameHandler
 
 GameClient --> GameMessage
 GameServer --> ClientHandler
 ClientHandler --> GameMessage
+ClientHandler --> MessageHandlerContext
+MessageHandlerContext --> MessageHandler
 
 ' ===== main =====
 class App
