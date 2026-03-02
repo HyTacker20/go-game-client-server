@@ -9,10 +9,6 @@ import com.example.goboard.strategy.SimpleMoveValidator;
 import com.example.goboard.view.GameUI;
 import com.example.goboard.view.ConsoleUIFormatter;
 
-/**
- * Local game controller that uses a GameUI abstraction.
- * This allows the game to work with any UI implementation (Console, GUI, etc.)
- */
 public class ConsoleGame {
 
     private final Board board;
@@ -21,33 +17,84 @@ public class ConsoleGame {
 
     public ConsoleGame(GameUI ui) {
         this.ui = ui;
-        board = BoardFactory.small9();
-        controller = new GameController(
+
+        this.board = BoardFactory.small9();
+
+        Player black = Player.defaultBlack();
+        Player white = Player.defaultWhite();
+
+        this.controller = new GameController(
                 board,
                 new SimpleMoveValidator(),
-                new Player("Black", Stone.Color.BLACK)
+                black,
+                white
         );
     }
 
     public void start() {
-        // Enable ANSI support and enter alternative screen buffer
         ConsoleUIFormatter.enableWindowsAnsiSupport();
         ConsoleUIFormatter.enterAlternativeScreen();
-        
+
         try {
             ConsoleUIFormatter.printHeader("GO Game - Local Mode");
             ui.displayBoard(board);
 
-            while (true) {
-            String input = ui.getMoveInput("Move (e.g., D4), 'pass', 'quit': ");
+            gameLoop();
 
-                if (input.equals("quit")) {
-                    ConsoleUIFormatter.printInfo("Game ended.");
-                    break;
-                }
+            ConsoleUIFormatter.printInfo("Game over.");
 
-            if (input.equals("pass")) {
-                ConsoleUIFormatter.printMessage("Player passes.");
+        } finally {
+            ConsoleUIFormatter.exitAlternativeScreen();
+            ui.close();
+        }
+    }
+
+    private void gameLoop() {
+
+        while (!controller.isGameOver()) {
+
+            // === SCORING PHASE ===
+            if (controller.isScoringPhase()) {
+                controller.handleScoring(ui);
+                ui.displayBoard(board);
+                continue;
+            }
+
+            // === NORMAL PLAY ===
+            String prompt =
+                    controller.getCurrentPlayer().getName()
+                            + " move (e.g. D4), 'pass', 'resign', 'quit': ";
+
+            String input = ui.getMoveInput(prompt).trim();
+
+            // === PLAYER RESIGNS ===
+            // A player may resign at any moment of the game.
+            // The opponent immediately wins.
+            if (input.equalsIgnoreCase("resign")) {
+                ConsoleUIFormatter.printMessage(
+                        controller.getCurrentPlayer().getName()
+                                + " resigns."
+                );
+
+                Player winner =
+                        controller.getCurrentPlayer().getColor() == Stone.Color.BLACK
+                                ? controller.getWhitePlayer()
+                                : controller.getBlackPlayer();
+
+                ConsoleUIFormatter.printSuccess(
+                        winner.getName() + " wins by resignation."
+                );
+                return;
+            }
+
+            if (input.equalsIgnoreCase("quit")) {
+                return;
+            }
+
+            if (input.equalsIgnoreCase("pass")) {
+                ConsoleUIFormatter.printMessage(
+                        controller.getCurrentPlayer().getName() + " passes."
+                );
                 controller.pass();
                 ui.displayBoard(board);
                 continue;
@@ -55,26 +102,26 @@ public class ConsoleGame {
 
             int[] pos = parseMove(input);
             if (pos == null) {
-                ConsoleUIFormatter.printError("Invalid move format. Use coordinates like D4, A1, etc.");
+                ConsoleUIFormatter.printError(
+                        "Invalid move format. Use A1–T19 (I skipped)."
+                );
                 continue;
             }
 
-            if (!controller.play(pos[0], pos[1])) {
-                ConsoleUIFormatter.printError("Invalid move. Try another position.");
+            boolean ok = controller.play(pos[0], pos[1]);
+            if (!ok) {
+                ConsoleUIFormatter.printError("Illegal move.");
             } else {
-                ConsoleUIFormatter.printSuccess("Move accepted");
+                ConsoleUIFormatter.printSuccess("Move accepted.");
             }
 
-                ui.displayBoard(board);
-            }
-        } finally {
-            // Always restore the original terminal screen on exit
-            ConsoleUIFormatter.exitAlternativeScreen();
-            ui.close();
+            ui.displayBoard(board);
         }
     }
 
-    // Parse move notation (e.g., A3, D10). Note: skips I column in Go
+    /**
+     * Parses moves like "D4" → [row, col]
+     */
     private int[] parseMove(String move) {
         if (move.length() < 2) return null;
 
@@ -82,10 +129,12 @@ public class ConsoleGame {
         if (colChar < 'A' || colChar > 'T' || colChar == 'I') return null;
 
         int col = colChar - 'A';
-        if (colChar > 'I') col--;
+        if (colChar > 'I') col--; // skip I
 
         try {
             int row = Integer.parseInt(move.substring(1)) - 1;
+            if (row < 0 || row >= board.getSize()) return null;
+            if (col < 0 || col >= board.getSize()) return null;
             return new int[]{row, col};
         } catch (NumberFormatException e) {
             return null;

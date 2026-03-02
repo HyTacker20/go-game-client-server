@@ -2,98 +2,208 @@ package com.example.goboard.controller;
 
 import com.example.goboard.controller.state.GameState;
 import com.example.goboard.controller.state.PlayingState;
+import com.example.goboard.controller.state.ScoringState;
 import com.example.goboard.model.Board;
 import com.example.goboard.model.Player;
 import com.example.goboard.model.Stone;
 import com.example.goboard.strategy.MoveValidator;
+import com.example.goboard.view.GameUI;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Game controller using State pattern to manage different game phases.
- * Delegates behavior to current state object, making the code more maintainable
- * and easier to extend with new game phases.
+ * GameController is the central coordinator of the Go game.
+ *
+ * Responsibilities:
+ * - Holds references to core game components (Board, Players, MoveValidator)
+ * - Delegates game actions to the current GameState
+ * - Manages state transitions (Playing → Scoring → GameOver)
  */
 public class GameController {
+
     private final Board board;
     private final MoveValidator validator;
     private final Player blackPlayer;
     private final Player whitePlayer;
-    
+
+    /** True while a scoring negotiation is in progress. */
+    private boolean scoringInProgress = false;
+    /** Score confirmations for the current scoring phase. */
+    private boolean blackScoreConfirmed = false;
+    private boolean whiteScoreConfirmed = false;
+
+    /** Stones removed during scoring (for potential restoration). */
+    private final List<RemovedStone> removedDuringScoring = new ArrayList<>();
+
     private GameState currentState;
 
-    public GameController(Board board, MoveValidator validator, Player black, Player white, Player starting) {
+    /**
+     * Constructor with explicit black and white players.
+     * Always starts with black as the first player.
+     */
+    public GameController(Board board,
+                          MoveValidator validator,
+                          Player black,
+                          Player white) {
         this.board = board;
         this.validator = validator;
         this.blackPlayer = black;
         this.whitePlayer = white;
-        
-        Player startingPlayer = starting != null ? starting : black;
-        // Initialize in playing state
-        this.currentState = new PlayingState(this, board, validator, 
-            blackPlayer, whitePlayer, startingPlayer, 0);
+
+        // Starting player is black by default
+        Player startingPlayer = black;
+
+        this.currentState = new PlayingState(
+                this,
+                board,
+                validator,
+                blackPlayer,
+                whitePlayer,
+                startingPlayer,
+                0
+        );
     }
 
     /**
-     * Alternative constructor for simpler calls: provide only one starting player.
-     * The second player is automatically created with opposite color.
+     * Simplified constructor for local games.
+     * Creates the missing player automatically.
      */
     public GameController(Board board, MoveValidator validator, Player starting) {
         this.board = board;
         this.validator = validator;
-        this.blackPlayer = starting.getColor() == Stone.Color.BLACK ? 
-            starting : new Player("Black", Stone.Color.BLACK);
-        this.whitePlayer = starting.getColor() == Stone.Color.WHITE ? 
-            starting : new Player("White", Stone.Color.WHITE);
-        
-        // Initialize in playing state
-        this.currentState = new PlayingState(this, board, validator,
-            blackPlayer, whitePlayer, starting, 0);
+
+        if (starting.getColor() == Stone.Color.BLACK) {
+            this.blackPlayer = starting;
+            this.whitePlayer = Player.defaultWhite();
+        } else {
+            this.whitePlayer = starting;
+            this.blackPlayer = Player.defaultBlack();
+        }
+
+        this.currentState = new PlayingState(
+                this,
+                board,
+                validator,
+                blackPlayer,
+                whitePlayer,
+                starting,
+                0
+        );
     }
 
-    /**
-     * Execute a move (place stone). Returns true when move is valid and executed.
-     * Delegates to current state.
-     */
+    /** Attempts to play a move via the current GameState */
     public boolean play(int row, int col) {
         return currentState.play(row, col);
     }
 
-    /**
-     * Player passes. Returns true if game ended (e.g., after two passes).
-     * Delegates to current state.
-     */
+    /** Current player passes their turn */
     public boolean pass() {
         return currentState.pass();
     }
 
-    /**
-     * Get the current player for this turn.
-     * Delegates to current state.
-     */
+    /** Returns the player whose turn it currently is */
     public Player getCurrentPlayer() {
         return currentState.getCurrentPlayer();
     }
 
-    /**
-     * Check if game is over.
-     * Delegates to current state.
-     */
+    /** Returns true if the game is over */
     public boolean isGameOver() {
         return currentState.isGameOver();
     }
 
-    /**
-     * Get the number of consecutive passes.
-     * Delegates to current state.
-     */
+    /** Returns the number of consecutive passes */
     public int getConsecutivePasses() {
         return currentState.getConsecutivePasses();
     }
-    
-    /**
-     * Set the current game state.
-     * Public for use by state implementations.
-     */
+
+    /** Sets the current game state (used by state objects) */
     public void setState(GameState state) {
         this.currentState = state;
+    }
+
+    /** Returns the current game state (for UI or logic) */
+    public GameState getState() {
+        return currentState;
+    }
+
+    /** Returns true if the game is currently in scoring phase */
+    public boolean isScoringPhase() {
+        return currentState instanceof ScoringState;
+    }
+
+    /** Delegates scoring handling to the ScoringState */
+    public void handleScoring(GameUI ui) {
+        if (currentState instanceof ScoringState scoringState) {
+            scoringState.handleScoring(ui);
+        }
+    }
+
+    /** Getters for players and board */
+    public Player getBlackPlayer() { return blackPlayer; }
+    public Player getWhitePlayer() { return whitePlayer; }
+    public Board getBoard() { return board; }
+
+    /** Scoring lifecycle helpers */
+    public synchronized void startScoringPhase() {
+        scoringInProgress = true;
+        blackScoreConfirmed = false;
+        whiteScoreConfirmed = false;
+        System.out.println("[GAME] Scoring phase flag set: scoringInProgress=true");
+    }
+
+    public synchronized void endScoringPhase() {
+        scoringInProgress = false;
+        blackScoreConfirmed = false;
+        whiteScoreConfirmed = false;
+        System.out.println("[GAME] Scoring phase flag cleared: scoringInProgress=false");
+    }
+
+    public synchronized boolean isScoringInProgress() {
+        return scoringInProgress;
+    }
+
+    public synchronized void markScoreConfirmed(Stone.Color color) {
+        if (color == Stone.Color.BLACK) {
+            blackScoreConfirmed = true;
+        } else {
+            whiteScoreConfirmed = true;
+        }
+    }
+
+    public synchronized void resetScoreConfirmations() {
+        blackScoreConfirmed = false;
+        whiteScoreConfirmed = false;
+    }
+
+    public synchronized boolean bothScoresConfirmed() {
+        return blackScoreConfirmed && whiteScoreConfirmed;
+    }
+
+    /** Scoring helpers */
+    public void clearRemovedDuringScoring() {
+        removedDuringScoring.clear();
+    }
+
+    public void addRemovedDuringScoring(int row, int col, Stone.Color color) {
+        removedDuringScoring.add(new RemovedStone(row, col, color));
+    }
+
+    public void restoreRemovedDuringScoring() {
+        for (RemovedStone rs : removedDuringScoring) {
+            board.getIntersection(rs.row, rs.col).setStone(new Stone(rs.color));
+        }
+        removedDuringScoring.clear();
+    }
+
+    private static class RemovedStone {
+        final int row;
+        final int col;
+        final Stone.Color color;
+
+        RemovedStone(int row, int col, Stone.Color color) {
+            this.row = row;
+            this.col = col;
+            this.color = color;
+        }
     }
 }

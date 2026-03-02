@@ -18,6 +18,14 @@ public class MoveHandler implements MessageHandler {
             context.sendMessage(response);
             return;
         }
+
+        if (context.getGameController().isScoringInProgress()) {
+            GameMessage response = new GameMessage.TextMessage(
+                GameMessage.MessageType.ERROR,
+                "Scoring in progress. Wait until scoring is resolved.");
+            context.sendMessage(response);
+            return;
+        }
         
         GameMessage.MoveMessage moveMsg = (GameMessage.MoveMessage) message;
         int row = moveMsg.getRow();
@@ -25,6 +33,8 @@ public class MoveHandler implements MessageHandler {
         
         boolean success = context.getGameController().play(row, col);
         int[][] boardState = context.serializeBoard(context.getBoard());
+        int blackCaptured = context.getBoard().getBlackPrisoners();
+        int whiteCaptured = context.getBoard().getWhitePrisoners();
         
         if (success) {
             String position = formatPosition(row, col);
@@ -32,19 +42,25 @@ public class MoveHandler implements MessageHandler {
             GameMessage response = new GameMessage.MoveResponseMessage(
                 true,
                 "Move accepted at (" + row + ", " + col + ")",
-                boardState);
+                boardState,
+                blackCaptured,
+                whiteCaptured);
             context.sendMessage(response);
             
             GameMessage opponentMsg = new GameMessage.OpponentMoveMessage(
                 row, col,
                 "Opponent played at (" + row + ", " + col + ")",
-                boardState);
+                boardState,
+                blackCaptured,
+                whiteCaptured);
             context.getOpponent().sendMessage(opponentMsg);
         } else {
             GameMessage response = new GameMessage.MoveResponseMessage(
                 false,
                 "Invalid move at (" + row + ", " + col + ")",
-                boardState);
+                boardState,
+                blackCaptured,
+                whiteCaptured);
             context.sendMessage(response);
         }
     }

@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.example.goboard.controller"},{"l":"com.example.goboard.model"},{"l":"com.example.goboard.network"}];updateSearchResults();

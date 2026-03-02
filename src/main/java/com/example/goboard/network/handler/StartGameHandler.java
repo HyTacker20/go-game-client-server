@@ -37,7 +37,7 @@ public class StartGameHandler implements MessageHandler {
         }
         
         // Initialize game
-        Board board = BoardFactory.small9();
+        Board board = BoardFactory.standard19();
         context.setBoard(board);
         
         // Randomly assign colors to players, regardless of prior preference
@@ -54,7 +54,7 @@ public class StartGameHandler implements MessageHandler {
         
         GameController gameController = new GameController(
             board, new SimpleMoveValidator(), 
-            blackPlayer, whitePlayer, blackPlayer);
+            blackPlayer, whitePlayer);
         
         context.setGameController(gameController);
         context.setGameActive(true);
@@ -69,10 +69,15 @@ public class StartGameHandler implements MessageHandler {
         
         // Notify both players
         int[][] boardState = context.serializeBoard(board);
+        int blackCaptured = board.getBlackPrisoners();
+        int whiteCaptured = board.getWhitePrisoners();
+        
         GameMessage startMsg = new GameMessage.BoardStateMessage(
             GameMessage.MessageType.YOUR_TURN,
             boardState,
-            "Game started! Black plays first");
+            "Game started! Black plays first",
+            blackCaptured,
+            whiteCaptured);
         
         if (contextAssigned.getColor() == Stone.Color.BLACK) {
             context.sendMessage(startMsg);
@@ -80,13 +85,17 @@ public class StartGameHandler implements MessageHandler {
             GameMessage opponentMsg = new GameMessage.BoardStateMessage(
                 GameMessage.MessageType.OPPONENT_TURN,
                 boardState,
-                "Game started! Opponent (Black) plays first");
+                "Game started! Opponent (Black) plays first",
+                blackCaptured,
+                whiteCaptured);
             opponent.sendMessage(opponentMsg);
         } else {
             context.sendMessage(new GameMessage.BoardStateMessage(
                 GameMessage.MessageType.OPPONENT_TURN,
                 boardState,
-                "Game started! Opponent (Black) plays first"));
+                "Game started! Opponent (Black) plays first",
+                blackCaptured,
+                whiteCaptured));
             opponent.sendMessage(startMsg);
         }
         

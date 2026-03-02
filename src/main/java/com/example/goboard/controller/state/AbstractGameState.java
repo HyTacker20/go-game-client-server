@@ -47,4 +47,9 @@ public abstract class AbstractGameState implements GameState {
     public int getConsecutivePasses() {
         return consecutivePasses;
     }
+    
+    @Override
+    public MoveValidator getValidator() {
+        return validator;
+    }
 }

@@ -48,11 +48,18 @@ public class PlayingState extends AbstractGameState {
         consecutivePasses++;
 
         if (consecutivePasses >= 2) {
-            // Game ends after two consecutive passes
-            controller.setState(new GameOverState(controller, board, validator,
-                    blackPlayer, whitePlayer, currentPlayer, consecutivePasses));
+            // Two consecutive passes → enter scoring phase
+            controller.setState(new ScoringState(
+                    controller,
+                    board,
+                    validator,
+                    blackPlayer,
+                    whitePlayer,
+                    currentPlayer,
+                    consecutivePasses
+            ));
             return true;
-        } else {
+    } else {
             swapPlayer();
             // Stay in playing state with updated pass count
             controller.setState(new PlayingState(controller, board, validator,

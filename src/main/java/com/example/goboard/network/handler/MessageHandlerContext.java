@@ -6,6 +6,7 @@ import com.example.goboard.model.Player;
 import com.example.goboard.network.ClientHandler;
 import com.example.goboard.network.GameMessage;
 import com.example.goboard.network.GameServer;
+import com.example.goboard.strategy.MoveValidator;
 
 /**
  * Context object that provides access to client state and utilities
@@ -80,6 +81,15 @@ public class MessageHandlerContext {
     
     public int[][] serializeBoard(Board board) {
         return clientHandler.serializeBoard(board);
+    }
+
+    public MoveValidator getMoveValidator() {
+        GameController controller = clientHandler.getGameController();
+        if (controller != null) {
+            // Get validator from the game state
+            return controller.getState().getValidator();
+        }
+        return null;
     }
     
     // Server operations
